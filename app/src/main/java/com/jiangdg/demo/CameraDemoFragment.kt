@@ -27,6 +27,8 @@ import com.jiangdg.ausbc.callback.ICameraStateCallBack
 import com.jiangdg.ausbc.callback.ICaptureCallBack
 import com.jiangdg.ausbc.callback.IEncodeDataCallBack
 import com.jiangdg.ausbc.camera.CameraUVC
+import com.jiangdg.ausbc.camera.bean.CameraRequest
+import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
@@ -62,6 +64,24 @@ class CameraViewModel : ViewModel() {
 }
 
 class CameraDemoFragment : CameraFragment() {
+
+    override fun getCameraRequest(): CameraRequest {
+        val request = CameraRequest.Builder()
+            .setPreviewWidth(2160) // camera preview width
+            .setPreviewHeight(2160) // camera preview height
+            .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
+            .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
+            .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
+            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // set preview format, MJPEG recommended
+            .setAspectRatioShow(true) // aspect render,default is true
+            .setCaptureRawImage(false) // capture raw image picture when opengl mode
+            .setRawPreviewData(false)  // preview raw image when opengl mode
+            .create()
+
+        return request
+
+    }
+
     override fun getCameraView(): IAspectRatio? {
         return AspectRatioSurfaceView(requireContext())
     }
