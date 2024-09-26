@@ -16,8 +16,13 @@
 package com.jiangdg.demo
 
 import android.Manifest.permission.*
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.PowerManager
+import android.provider.Settings
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker
@@ -26,6 +31,7 @@ import com.gyf.immersionbar.ImmersionBar
 import com.jiangdg.ausbc.utils.ToastUtils
 import com.jiangdg.ausbc.utils.Utils
 import com.jiangdg.demo.databinding.ActivityMainBinding
+import com.jiangdg.utils.XLogger
 
 /**
  * Demos of camera usage
@@ -39,12 +45,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        XLogger.d("相机-----onCreate")
         setStatusBar()
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
-//        replaceDemoFragment(DemoMultiCameraFragment())
-        replaceDemoFragment(DemoFragment())
-//        replaceDemoFragment(GlSurfaceFragment())
+        replaceDemoFragment(CameraDemoFragment())
+        val uri = Uri.parse("package:${this.packageName}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if(!Environment.isExternalStorageManager()){
+                startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        uri
+                    )
+                )
+            }
+        }
     }
 
     override fun onStart() {
@@ -61,15 +78,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun replaceDemoFragment(fragment: Fragment) {
         val hasCameraPermission = PermissionChecker.checkSelfPermission(this, CAMERA)
-        val hasStoragePermission =
-            PermissionChecker.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE)
-        if (hasCameraPermission != PermissionChecker.PERMISSION_GRANTED || hasStoragePermission != PermissionChecker.PERMISSION_GRANTED) {
+//        val hasStoragePermission = PermissionChecker.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE)
+        if (hasCameraPermission != PermissionChecker.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, CAMERA)) {
                 ToastUtils.show(R.string.permission_tip)
             }
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(CAMERA, WRITE_EXTERNAL_STORAGE, RECORD_AUDIO),
+                arrayOf(CAMERA, RECORD_AUDIO),
                 REQUEST_CAMERA
             )
             return
@@ -93,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
 //                replaceDemoFragment(DemoMultiCameraFragment())
-                replaceDemoFragment(DemoFragment())
+                replaceDemoFragment(CameraDemoFragment())
 //                replaceDemoFragment(GlSurfaceFragment())
             }
             REQUEST_STORAGE -> {

@@ -64,6 +64,7 @@ import com.jiangdg.demo.EffectListDialog.Companion.KEY_ANIMATION
 import com.jiangdg.demo.EffectListDialog.Companion.KEY_FILTER
 import com.jiangdg.demo.databinding.DialogMoreBinding
 import com.jiangdg.utils.MMKVUtils
+import com.jiangdg.utils.XLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
@@ -73,7 +74,6 @@ import java.util.*
  * @author Created by jiangdg on 2022/1/28
  */
 class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.OnViewClickListener {
-    private var mMultiCameraDialog: MultiCameraDialog? = null
     private lateinit var mMoreBindingView: DialogMoreBinding
     private var mMoreMenu: PopupWindow? = null
     private var isCapturingVideoOrAudio: Boolean = false
@@ -151,6 +151,7 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
 
     override fun initView() {
         super.initView()
+        XLogger.d("相机  init view----》")
         mViewBinding.lensFacingBtn1.setOnClickListener(this)
         mViewBinding.effectsBtn.setOnClickListener(this)
         mViewBinding.cameraTypeBtn.setOnClickListener(this)
@@ -165,6 +166,7 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
 
     override fun initData() {
         super.initData()
+        XLogger.d("相机  init data----》")
         EventBus.with<Int>(BusKey.KEY_FRAME_RATE).observe(this, {
             mViewBinding.frameRateTv.text = "frame rate:  $it fps"
         })
@@ -239,9 +241,19 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
         msg: String?
     ) {
         when (code) {
-            ICameraStateCallBack.State.OPENED -> handleCameraOpened()
-            ICameraStateCallBack.State.CLOSED -> handleCameraClosed()
-            ICameraStateCallBack.State.ERROR -> handleCameraError(msg)
+            ICameraStateCallBack.State.OPENED -> {
+                XLogger.d("相机打开-----》")
+                handleCameraOpened()
+            }
+            ICameraStateCallBack.State.CLOSED ->{
+                XLogger.d("相机关闭-----》")
+                handleCameraClosed()
+            }
+            ICameraStateCallBack.State.ERROR ->{
+                XLogger.d("相机错误-----》")
+                handleCameraError(msg)
+
+            }
         }
     }
 
@@ -260,9 +272,12 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
     private fun handleCameraOpened() {
         mViewBinding.uvcLogoIv.visibility = View.GONE
         mViewBinding.frameRateTv.visibility = View.VISIBLE
+        (getCurrentCamera() as? CameraUVC)?.setAutoFocus(true)
+        (getCurrentCamera() as? CameraUVC)?.setAutoWhiteBalance(true)
+
         mViewBinding.brightnessSb.max = (getCurrentCamera() as? CameraUVC)?.getBrightnessMax() ?: 100
         mViewBinding.brightnessSb.progress = (getCurrentCamera() as? CameraUVC)?.getBrightness() ?: 0
-        Logger.i(TAG, "max = ${mViewBinding.brightnessSb.max}, progress = ${mViewBinding.brightnessSb.progress}")
+        XLogger.d("max = ${mViewBinding.brightnessSb.max}, progress = ${mViewBinding.brightnessSb.progress}")
         mViewBinding.brightnessSb.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 (getCurrentCamera() as? CameraUVC)?.setBrightness(progress)
@@ -306,7 +321,8 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
     }
 
     override fun getCameraView(): IAspectRatio {
-        return AspectRatioTextureView(requireContext())
+//        return AspectRatioTextureView(requireContext())
+        return AspectRatioSurfaceView(requireContext())
     }
 
     override fun getCameraViewContainer(): ViewGroup {
@@ -440,7 +456,6 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
 
     override fun onDestroyView() {
         super.onDestroyView()
-        mMultiCameraDialog?.hide()
     }
 
     override fun onClick(v: View?) {
@@ -589,14 +604,14 @@ class DemoFragment : CameraFragment(), View.OnClickListener, CaptureMediaView.On
 
     private fun goToMultiplexActivity() {
         mMoreMenu?.dismiss()
-        mMultiCameraDialog = MultiCameraDialog()
-        mMultiCameraDialog?.setOnDismissListener(object : BaseBottomDialog.OnDismissListener {
-            override fun onDismiss() {
-                registerMultiCamera()
-            }
-        })
-        mMultiCameraDialog?.show(childFragmentManager, "multiRoadCameras")
-        unRegisterMultiCamera()
+//        mMultiCameraDialog = MultiCameraDialog()
+//        mMultiCameraDialog?.setOnDismissListener(object : BaseBottomDialog.OnDismissListener {
+//            override fun onDismiss() {
+//                registerMultiCamera()
+//            }
+//        })
+//        mMultiCameraDialog?.show(childFragmentManager, "multiRoadCameras")
+//        unRegisterMultiCamera()
     }
 
     private fun showContactDialog() {
