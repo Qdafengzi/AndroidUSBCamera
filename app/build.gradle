@@ -4,7 +4,8 @@ plugins {
 }
 
 android {
-    compileSdkVersion rootProject.ext.versionCompiler
+    compileSdk rootProject.ext.versionCompiler
+    namespace "com.jiangdg.demo"
     defaultConfig {
         applicationId "com.jiangdg.ausbc"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -14,8 +15,8 @@ android {
 
         multiDexEnabled true
 
-        ndk{
-            abiFilters 'armeabi-v7a','arm64-v8a'
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
     buildTypes {
@@ -40,33 +41,44 @@ android {
 
     // libuvc module should need set local.properties
     // eg: ndk.dir=D\:\\Developer\\Environment\\AndroidSdks\\ndk\\21.0.6113669
-//    ndkVersion rootProject.ext.ndkVersion
+    ndkVersion rootProject.ext.ndkVersion
 }
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:${androidXVersion}"
-    implementation "androidx.core:core-ktx:${kotlinCoreVersion}"
-    implementation "com.google.android.material:material:${materialVersion}"
-    implementation "androidx.constraintlayout:constraintlayout:${constraintlayoutVersion}"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${kotlinCoroutines}"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "com.google.android.material:material:1.12.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+//    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android"
+    def lifecycle_version = "2.8.6"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-runtime-ktx:$lifecycle_version"
     implementation "com.github.CymChad:BaseRecyclerViewAdapterHelper:$quick_version"
     implementation "com.afollestad.material-dialogs:core:$dialog_version"
 
+    def bugly_version = "3.4.4"
     implementation "com.tencent.bugly:crashreport:$bugly_version"
     implementation "com.tencent.bugly:nativecrashreport:$bugly_native_version"
 
+    // 基础依赖包，必须要依赖
     api 'com.gyf.immersionbar:immersionbar:3.0.0'
-    implementation "com.github.bumptech.glide:glide:4.10.0"
-    implementation "com.github.bumptech.glide:okhttp3-integration:4.10.0"
+    // kotlin扩展（可选）
+    api 'com.gyf.immersionbar:immersionbar-ktx:3.0.0'
+    // fragment快速实现（可选）
+    api 'com.gyf.immersionbar:immersionbar-components:3.0.0'
+
+    implementation "com.github.bumptech.glide:glide:4.13.2"
+    implementation "com.github.bumptech.glide:okhttp3-integration:4.12.0"
     implementation "com.zlc.glide:webpdecoder:1.6.4.9.0"
     implementation 'com.tencent:mmkv:1.2.12'
 
     // For debug online
     implementation project(':libausbc')
+
+    def multidex_version = "2.0.1"
+    implementation "androidx.multidex:multidex:$multidex_version"
 
     // demo
 //    implementation 'com.github.jiangdongguo.AndroidUSBCamera:libausbc:3.3.3'
