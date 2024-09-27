@@ -1,6 +1,10 @@
 package com.jiangdg.demo
 
-import android.app.usage.ExternalStorageStats
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
+import android.graphics.Rect
+import android.graphics.YuvImage
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -11,6 +15,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -20,22 +26,34 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.base.CameraFragment
 import com.jiangdg.ausbc.callback.ICameraStateCallBack
 import com.jiangdg.ausbc.callback.ICaptureCallBack
 import com.jiangdg.ausbc.callback.IEncodeDataCallBack
+import com.jiangdg.ausbc.callback.IPreviewDataCallBack
 import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
+import com.jiangdg.ausbc.render.effect.EffectHue
+import com.jiangdg.ausbc.render.effect.EffectImageLevel
+import com.jiangdg.ausbc.render.effect.EffectSaturation
+import com.jiangdg.ausbc.render.effect.EffectSharpen
+import com.jiangdg.ausbc.render.effect.EffectWhiteBalance
+import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
 import com.jiangdg.utils.XLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 
@@ -64,18 +82,19 @@ class CameraViewModel : ViewModel() {
 }
 
 class CameraDemoFragment : CameraFragment() {
-
     override fun getCameraRequest(): CameraRequest {
         val request = CameraRequest.Builder()
-            .setPreviewWidth(2160) // camera preview width
-            .setPreviewHeight(2160) // camera preview height
+//            .setPreviewWidth(2160) // camera preview width
+//            .setPreviewHeight(2160) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
             .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // set preview format, MJPEG recommended
+//            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
             .setAspectRatioShow(true) // aspect render,default is true
             .setCaptureRawImage(false) // capture raw image picture when opengl mode
-            .setRawPreviewData(false)  // preview raw image when opengl mode
+            .setRawPreviewData(true)  // preview raw image when opengl mode
+//            .setDefaultEffect(Effect)
             .create()
 
         return request
@@ -87,6 +106,59 @@ class CameraDemoFragment : CameraFragment() {
     }
 
     val viewModel = CameraViewModel()
+
+    val mWhiteBalance by lazy {
+        EffectWhiteBalance(this@CameraDemoFragment.requireContext())
+    }
+
+
+    private val mEffectDataList by lazy {
+        arrayListOf(
+//            CameraEffect.NONE_FILTER,
+
+            CameraEffect(
+                EffectImageLevel.ID,
+                "ImageLevel",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectImageLevel(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectWhiteBalance.ID,
+                "WhiteBalance",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectWhiteBalance(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectHue.ID,
+                "Hue",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectHue(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectSharpen.ID,
+                "Sharpness",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectSharpen(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectSaturation.ID,
+                "Saturation",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectSaturation(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+
+        )
+    }
 
     private lateinit var mViewBinding: FragmentDemo01Binding
     override fun getCameraViewContainer(): ViewGroup? {
@@ -103,8 +175,16 @@ class CameraDemoFragment : CameraFragment() {
         mViewBinding.compose.setContent {
             Column(modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color.White)) {
+                .verticalScroll(state = rememberScrollState(),enabled = true)
+                .background(color = Color.White),
+            ) {
                 val cameraUIState = viewModel.cameraUIState.collectAsState().value
+                HueView()
+                SharpnessView()
+                ToneView()
+                SaturationView()
+                TemperatureView()
+                TintView()
                 BrightnessView(cameraUIState)
                 ZoomView(cameraUIState)
                 TakePictureView()
@@ -156,9 +236,134 @@ class CameraDemoFragment : CameraFragment() {
     }
 
     @Composable
-    fun BrightnessView(cameraUIState:CameraUIState) {
-        Text("亮度")
+    fun TemperatureView() {
+        val sliderValue = remember { mutableFloatStateOf(5000f) }
+        Text(text = "色温:${sliderValue.floatValue}", fontSize = 8.sp)
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = 2000f..9000f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectWhiteBalance){
+                        (cameraEffect.effect as EffectWhiteBalance).setTemperature(progress)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+    @Composable
+    fun TintView() {
+        val sliderValue = remember { mutableFloatStateOf(50f) }
+        Text(text = "色调:${sliderValue.floatValue}", fontSize = 8.sp)
+
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = 0f..100f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectWhiteBalance){
+                        (cameraEffect.effect as EffectWhiteBalance).setTint(progress)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+    @Composable
+    fun ToneView() {
         val sliderValue = remember { mutableFloatStateOf(0f) }
+        Text(text = "Tone:${sliderValue.floatValue}", fontSize = 8.sp)
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = -0.3f..0.3f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectImageLevel){
+                        (cameraEffect.effect as EffectImageLevel).setMin(progress,1.0f,0.62f)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+
+    @Composable
+    fun HueView() {
+        val sliderValue = remember { mutableFloatStateOf(90f) }
+        Text(text = "Hue:${sliderValue.floatValue}", fontSize = 8.sp)
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = 0f..360f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectHue){
+                        (cameraEffect.effect as EffectHue).setHue(progress)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+
+    @Composable
+    fun SharpnessView() {
+        val sliderValue = remember { mutableFloatStateOf(0f) }
+        Text(text = "Sharpness:${sliderValue.floatValue}", fontSize = 8.sp)
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = -4f..4f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectSharpen){
+                        (cameraEffect.effect as EffectSharpen).setSharpness(progress)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+
+    @Composable
+    fun SaturationView() {
+        val sliderValue = remember { mutableFloatStateOf(0f) }
+        Text(text = "SaturationView:${sliderValue.floatValue}", fontSize = 8.sp)
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = sliderValue.floatValue,
+            valueRange = -1f..1f,
+            onValueChange = {progress->
+                sliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectSaturation){
+                        (cameraEffect.effect as EffectSaturation).setSaturation(progress)
+                    }
+                }
+            },
+            onValueChangeFinished = {
+            }
+        )
+    }
+
+    @Composable
+    fun BrightnessView(cameraUIState:CameraUIState) {
+        val sliderValue = remember { mutableFloatStateOf(0f) }
+        Text(text = "亮度:${sliderValue.floatValue}", fontSize = 8.sp)
 
         Slider(
             modifier = Modifier.fillMaxWidth(),
@@ -177,7 +382,6 @@ class CameraDemoFragment : CameraFragment() {
     fun ZoomView(cameraUIState:CameraUIState) {
         Text("Zoom")
         val sliderValue = remember { mutableFloatStateOf(1f) }
-
         Slider(
             modifier = Modifier.fillMaxWidth(),
             value = sliderValue.floatValue,
@@ -185,11 +389,99 @@ class CameraDemoFragment : CameraFragment() {
             onValueChange = {progress->
                 sliderValue.floatValue = progress
 //                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
-
             },
             onValueChangeFinished = {
             }
         )
+    }
+
+    fun cropAndScaleRGBA(
+        data: ByteArray,
+        originalWidth: Int,
+        originalHeight: Int,
+        cropX: Int,
+        cropY: Int,
+        cropWidth: Int,
+        cropHeight: Int,
+        newWidth: Int,
+        newHeight: Int
+    ): ByteArray {
+        val newData = ByteArray(newWidth * newHeight * 4)
+        val scaleX = cropWidth.toFloat() / newWidth
+        val scaleY = cropHeight.toFloat() / newHeight
+
+        for (y in 0 until newHeight) {
+            for (x in 0 until newWidth) {
+                // Calculate the corresponding position in the cropped region
+                val origX = (x * scaleX).toInt() + cropX
+                val origY = (y * scaleY).toInt() + cropY
+
+                // Calculate positions in the byte arrays
+                val origPos = (origY * originalWidth + origX) * 4
+                val newPos = (y * newWidth + x) * 4
+
+                // Copy RGBA values
+                for (i in 0 until 4) {
+                    newData[newPos + i] = data[origPos + i]
+                }
+            }
+        }
+
+        return newData
+    }
+    fun createBitmapFromRGBA(data: ByteArray, width: Int, height: Int): Bitmap {
+        // Create a Bitmap from RGBA byte array
+        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+            copyPixelsFromBuffer(ByteBuffer.wrap(data))
+        }
+    }
+
+
+    fun cropNV21(
+        data: ByteArray,
+        width: Int,
+        height: Int,
+        cropX: Int,
+        cropY: Int,
+        cropWidth: Int,
+        cropHeight: Int
+    ): ByteArray {
+        // Calculate the size of the cropped frame
+        val croppedSize = cropWidth * cropHeight * 3 / 2
+        val croppedData = ByteArray(croppedSize)
+
+        // Crop Y plane
+        for (y in 0 until cropHeight) {
+            val srcPos = (cropY + y) * width + cropX
+            val dstPos = y * cropWidth
+            System.arraycopy(data, srcPos, croppedData, dstPos, cropWidth)
+        }
+
+        // Crop UV plane
+        val uvHeight = cropHeight / 2
+        val uvWidth = cropWidth / 2
+        val yPlaneSize = width * height
+        val uvPlaneSize = width * height / 2
+
+        for (y in 0 until uvHeight) {
+            val srcPos = yPlaneSize + (cropY / 2 + y) * width + cropX
+            val dstPos = cropWidth * cropHeight + y * cropWidth
+            System.arraycopy(data, srcPos, croppedData, dstPos, cropWidth)
+        }
+
+        return croppedData
+    }
+
+    fun nv21ToBitmap(data: ByteArray, width: Int, height: Int): Bitmap? {
+        // Convert NV21 to YuvImage
+        val yuvImage = YuvImage(data, ImageFormat.NV21, width, height, null)
+        // Compress YuvImage to JPEG
+        val out = ByteArrayOutputStream()
+        val rect = Rect(0, 0, width, height)
+        yuvImage.compressToJpeg(rect, 100, out)
+        // Convert JPEG data to Bitmap
+        val jpegData = out.toByteArray()
+        return BitmapFactory.decodeByteArray(jpegData, 0, jpegData.size)
     }
 
     override fun onCameraState(
@@ -203,6 +495,59 @@ class CameraDemoFragment : CameraFragment() {
                 (getCurrentCamera() as? CameraUVC)?.apply {
                     setAutoFocus(true)
                     setAutoWhiteBalance(true)
+                    mEffectDataList.forEachIndexed { _, cameraEffect ->
+                        cameraEffect.effect?.let {
+//                            if (it is EffectImageLevel){
+//                                addRenderEffect(it)
+//                            }
+//                            if (it is EffectSaturation){
+//                                addRenderEffect(it)
+//                            }
+
+//                            if (it is EffectSharpness){
+//                                addRenderEffect(it)
+//                            }
+
+//                            if (it is EffectHue){
+//                                addRenderEffect(it)
+//                            }
+
+                            addRenderEffect(it)
+                        }
+                    }
+
+                    addPreviewDataCallBack(object :IPreviewDataCallBack{
+                        override fun onPreviewData(
+                            data: ByteArray?,
+                            width: Int,
+                            height: Int,
+                            format: IPreviewDataCallBack.DataFormat
+                        ) {
+                            XLogger.d("新的数据来了------->${format} width:${width} height:${height}")
+                            data?.let {
+                                val scale = 0.3f
+                                val newWidth = (width * scale).toInt()
+                                val newHeight = (height * scale).toInt()
+                                val newData = cropNV21(
+                                    data = data,
+                                    cropX = 100,
+                                    cropY = 100,
+                                    width = width,
+                                    height = height,
+                                    cropWidth = newWidth,
+                                    cropHeight = newHeight
+                                )
+                                val bitmap = nv21ToBitmap(newData, newWidth, newHeight)
+                                bitmap?.let {
+                                    lifecycleScope.launch(Dispatchers.Main) {
+//                                        whitebalance.setTemperature((2000..8000).random().toFloat())
+                                        mViewBinding.imageView.setImageBitmap(it)
+                                    }
+                                }
+                                //RGBA
+                            }
+                        }
+                    })
                     setEncodeDataCallBack(object :IEncodeDataCallBack{
                         override fun onEncodeData(
                             type: IEncodeDataCallBack.DataType,
@@ -213,7 +558,6 @@ class CameraDemoFragment : CameraFragment() {
                         ) {
                             XLogger.d("数据来了：${size} $timestamp")
                         }
-
                     })
                     setRenderSize(100,100)
 
