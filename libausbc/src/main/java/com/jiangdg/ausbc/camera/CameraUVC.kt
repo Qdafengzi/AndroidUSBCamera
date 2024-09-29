@@ -23,6 +23,7 @@ import android.provider.MediaStore
 import android.view.Surface
 import android.view.SurfaceView
 import android.view.TextureView
+import com.elvishew.xlog.XLog
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.MultiCameraClient.Companion.CAPTURE_TIMES_OUT_SEC
 import com.jiangdg.ausbc.MultiCameraClient.Companion.MAX_NV21_DATA
@@ -56,9 +57,17 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
             val data = ByteArray(capacity())
             get(data)
             mCameraRequest?.apply {
+//                XLog.d("哈哈哈哈","预览的尺寸:${data.size}  w:${previewWidth} h:${previewHeight}")
+
                 if (data.size != previewWidth * previewHeight * 3 / 2) {
                     return@IFrameCallback
                 }
+
+
+
+                //下面的代码只是返回预览帧的callback
+                //裁切data
+                XLog.d("预览要求 ：${previewWidth} ${previewHeight} ${Thread.currentThread().name}")
                 // for preview callback
                 mPreviewDataCbList.forEach { cb ->
                     cb?.onPreviewData(data, previewWidth, previewHeight, IPreviewDataCallBack.DataFormat.NV21)
@@ -74,6 +83,30 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
             }
         }
     }
+
+
+    fun cropNV21(data: ByteArray, previewWidth: Int, previewHeight: Int, cropWidth: Int, cropHeight: Int, startX: Int, startY: Int): ByteArray {
+        val croppedData = ByteArray(cropWidth * cropHeight * 3 / 2)
+        var outputIndex = 0
+
+        // Crop Y plane
+        for (i in 0 until cropHeight) {
+            val inputOffset = (startY + i) * previewWidth + startX
+            System.arraycopy(data, inputOffset, croppedData, outputIndex, cropWidth)
+            outputIndex += cropWidth
+        }
+
+        // Crop UV plane
+        val uvStart = previewWidth * previewHeight
+        for (i in 0 until cropHeight / 2) {
+            val inputOffset = uvStart + (startY / 2 + i) * previewWidth + startX
+            System.arraycopy(data, inputOffset, croppedData, outputIndex, cropWidth)
+            outputIndex += cropWidth
+        }
+
+        return croppedData
+    }
+
 
     override fun getAllPreviewSizes(aspectRatio: Double?): MutableList<PreviewSize> {
         val previewSizeList = arrayListOf<PreviewSize>()

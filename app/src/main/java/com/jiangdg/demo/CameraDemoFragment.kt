@@ -73,9 +73,12 @@ import com.jiangdg.ausbc.render.effect.EffectSharpen
 import com.jiangdg.ausbc.render.effect.EffectWhiteBalance
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
+import com.jiangdg.ausbc.widget.AspectRatioGLSurfaceView
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
+import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
+import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,16 +116,19 @@ class CameraViewModel : ViewModel() {
 
 class CameraDemoFragment : CameraFragment() {
     override fun getCameraRequest(): CameraRequest {
+        val width = ResUtils.dp2px(this.requireContext(),1080f)
+        val height = ResUtils.dp2px(this.requireContext(),1920f)
+
         val request = CameraRequest.Builder()
-//            .setPreviewWidth(2160) // camera preview width
-//            .setPreviewHeight(2160) // camera preview height
+            .setPreviewWidth(width) // camera preview width
+            .setPreviewHeight(height) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
             .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // set preview format, MJPEG recommended
 //            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
             .setAspectRatioShow(true) // aspect render,default is true
-            .setCaptureRawImage(false) // capture raw image picture when opengl mode
+            .setCaptureRawImage(true) // capture raw image picture when opengl mode
             .setRawPreviewData(true)  // preview raw image when opengl mode
 //            .setDefaultEffect(Effect)
             .create()
@@ -133,14 +139,10 @@ class CameraDemoFragment : CameraFragment() {
 
     override fun getCameraView(): IAspectRatio? {
         return AspectRatioSurfaceView(requireContext())
+//        return AspectRatioTextureView(requireContext())
     }
 
     val viewModel = CameraViewModel()
-
-    val mWhiteBalance by lazy {
-        EffectWhiteBalance(this@CameraDemoFragment.requireContext())
-    }
-
 
     private val mEffectDataList by lazy {
         arrayListOf(
