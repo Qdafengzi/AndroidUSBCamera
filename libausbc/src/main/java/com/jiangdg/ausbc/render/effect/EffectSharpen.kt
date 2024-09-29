@@ -43,6 +43,9 @@ class EffectSharpen(context: Context) : AbstractEffect(context) {
         super.setSize(width, height)
         this.width = width
         this.height = height
+
+        GLES20.glUniform1f(imageWidthFactorLocation,1.0f / width)
+        GLES20.glUniform1f(imageHeightFactorLocation,1.0f / height)
     }
 
     override fun beforeDraw() {
