@@ -1,31 +1,59 @@
 package com.jiangdg.demo
 
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
+import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.Red
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
@@ -37,6 +65,7 @@ import com.jiangdg.ausbc.callback.IEncodeDataCallBack
 import com.jiangdg.ausbc.callback.IPreviewDataCallBack
 import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
+import com.jiangdg.ausbc.render.effect.EffectContrast
 import com.jiangdg.ausbc.render.effect.EffectHue
 import com.jiangdg.ausbc.render.effect.EffectImageLevel
 import com.jiangdg.ausbc.render.effect.EffectSaturation
@@ -54,6 +83,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.ByteBuffer
 
 
@@ -156,7 +186,13 @@ class CameraDemoFragment : CameraFragment() {
                 coverResId = R.mipmap.filter0
             ),
 
-
+            CameraEffect(
+                EffectContrast.ID,
+                "Contrast",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectContrast(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
         )
     }
 
@@ -173,23 +209,157 @@ class CameraDemoFragment : CameraFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mViewBinding.compose.setContent {
+            val scrollState = rememberScrollState()
+            // Create a nested scroll connection to handle nested scroll scenarios
+            val nestedScrollConnection = remember {
+                object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
+            }
+
+
             Column(modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(state = rememberScrollState(),enabled = true)
+                .verticalScroll(state = scrollState, enabled = true)
+                .nestedScroll(connection = nestedScrollConnection)
                 .background(color = Color.White),
             ) {
                 val cameraUIState = viewModel.cameraUIState.collectAsState().value
-                HueView()
-                SharpnessView()
-                ToneView()
-                SaturationView()
-                TemperatureView()
-                TintView()
-                BrightnessView(cameraUIState)
+                val contrastSliderValue = remember { mutableFloatStateOf(1f) }
+                SliderView(
+                    name = "Contrast",
+                    range = 0f..4f,
+                    sliderValue = contrastSliderValue,
+                    onValueChange = { progress ->
+                        contrastSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectContrast) {
+                                (cameraEffect.effect as EffectContrast).setContrast(progress)
+                            }
+                        }
+                    }
+                )
+
+
+                val hueSliderValue = remember { mutableFloatStateOf(90f) }
+                SliderView(
+                    name = "Hue",
+                    range = 0f..360f,
+                    sliderValue = hueSliderValue,
+                    onValueChange = { progress ->
+                        hueSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectHue){
+                                (cameraEffect.effect as EffectHue).setHue(progress)
+                            }
+                        }
+                    }
+                )
+
+
+                val sharpnessSliderValue = remember { mutableFloatStateOf(0f) }
+                SliderView(
+                    name = "Sharpness",
+                    range = -4f..4f,
+                    sliderValue = sharpnessSliderValue,
+                    onValueChange = { progress ->
+                        sharpnessSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectSharpen){
+                                (cameraEffect.effect as EffectSharpen).setSharpness(progress)
+                            }
+                        }
+                    }
+                )
+
+                val toneSliderValue = remember { mutableFloatStateOf(0f) }
+                SliderView(
+                    name = "Tone",
+                    range = -0.3f..0.3f,
+                    sliderValue = toneSliderValue,
+                    onValueChange = { progress ->
+                        toneSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectImageLevel){
+                                (cameraEffect.effect as EffectImageLevel).setMin(progress,1.0f,0.62f)
+                            }
+                        }
+                    }
+                )
+
+
+                val saturationSliderValue = remember { mutableFloatStateOf(0f) }
+                SliderView(
+                    name = "Saturation",
+                    range = -1f..1f,
+                    sliderValue = saturationSliderValue,
+                    onValueChange = { progress ->
+                        saturationSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectSaturation) {
+                                (cameraEffect.effect as EffectSaturation).setSaturation(progress)
+                            }
+                        }
+                    }
+                )
+
+                val temperatureSliderValue = remember { mutableFloatStateOf(5000f) }
+                SliderView(
+                    name = "temperature",
+                    range = 2000f..9000f,
+                    sliderValue = temperatureSliderValue,
+                    onValueChange = { progress ->
+                        temperatureSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectWhiteBalance){
+                                (cameraEffect.effect as EffectWhiteBalance).setTemperature(progress)
+                            }
+                        }
+                    }
+                )
+
+                val tintSliderValue = remember { mutableFloatStateOf(50f) }
+                SliderView(
+                    name = "tint",
+                    range = 0f..100f,
+                    sliderValue = tintSliderValue,
+                    onValueChange = { progress ->
+                        tintSliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectWhiteBalance){
+                                (cameraEffect.effect as EffectWhiteBalance).setTint(progress)
+                            }
+                        }
+                    }
+                )
+
+                val brightnessSliderValue = remember { mutableFloatStateOf(0f) }
+                SliderView(
+                    name = "Brightness",
+                    range = cameraUIState.minBrightness..cameraUIState.maxBrightness,
+                    sliderValue = brightnessSliderValue,
+                    onValueChange = { progress ->
+                        brightnessSliderValue.floatValue = progress
+                        (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
+                    }
+                )
                 ZoomView(cameraUIState)
                 TakePictureView()
             }
         }
+    }
+
+
+    fun refreshGallery2(context: Context, filePath: String) {
+        MediaScannerConnection.scanFile(context, arrayOf(filePath), null) { path, uri ->
+            // MediaScannerConnection is complete
+            XLogger.d("拍照完成:${path}")
+        }
+    }
+
+    fun refreshGallery(context: Context, filePath: String) {
+        val file = File(filePath)
+        val uri = Uri.fromFile(file)
+        val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri)
+        context.sendBroadcast(intent)
     }
 
     @Composable
@@ -205,7 +375,10 @@ class CameraDemoFragment : CameraFragment() {
                         }
 
                         override fun onComplete(path: String?) {
-                            XLogger.d("拍照完成:${path}")
+                            path?.let {
+                                XLogger.d("拍照完成:${path}")
+                                refreshGallery2(this@CameraDemoFragment.requireContext(),path)
+                            }
                         }
                     })
 
@@ -235,148 +408,47 @@ class CameraDemoFragment : CameraFragment() {
         }
     }
 
-    @Composable
-    fun TemperatureView() {
-        val sliderValue = remember { mutableFloatStateOf(5000f) }
-        Text(text = "色温:${sliderValue.floatValue}", fontSize = 8.sp)
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = 2000f..9000f,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectWhiteBalance){
-                        (cameraEffect.effect as EffectWhiteBalance).setTemperature(progress)
-                    }
-                }
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
-    @Composable
-    fun TintView() {
-        val sliderValue = remember { mutableFloatStateOf(50f) }
-        Text(text = "色调:${sliderValue.floatValue}", fontSize = 8.sp)
 
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = 0f..100f,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectWhiteBalance){
-                        (cameraEffect.effect as EffectWhiteBalance).setTint(progress)
-                    }
-                }
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun ToneView() {
-        val sliderValue = remember { mutableFloatStateOf(0f) }
-        Text(text = "Tone:${sliderValue.floatValue}", fontSize = 8.sp)
+    fun SliderView(name:String ,range:ClosedFloatingPointRange<Float> = 0f..1f,sliderValue:MutableFloatState,onValueChange:(progress:Float)->Unit){
+        Text(text = "${name}:${sliderValue.floatValue}", fontSize = 8.sp)
         Slider(
             modifier = Modifier.fillMaxWidth(),
             value = sliderValue.floatValue,
-            valueRange = -0.3f..0.3f,
+            valueRange = range,
             onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectImageLevel){
-                        (cameraEffect.effect as EffectImageLevel).setMin(progress,1.0f,0.62f)
-                    }
-                }
+                onValueChange(progress)
             },
             onValueChangeFinished = {
+            },
+            track = {
+                Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp)
+                        .background(color = Color(0xFF0099A1), shape = RoundedCornerShape(7.dp))
+                )
+            },
+
+            thumb = {
+                val shape = CircleShape
+                Spacer(
+                    modifier = Modifier
+                        .size(20.dp)
+                        .indication(
+                            interactionSource = MutableInteractionSource(),
+                            indication = null
+                        )
+                        .hoverable(interactionSource = MutableInteractionSource())
+                        .shadow(6.dp, shape, clip = false)
+                        .background(color = Color.White, shape)
+                )
             }
         )
     }
 
-    @Composable
-    fun HueView() {
-        val sliderValue = remember { mutableFloatStateOf(90f) }
-        Text(text = "Hue:${sliderValue.floatValue}", fontSize = 8.sp)
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = 0f..360f,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectHue){
-                        (cameraEffect.effect as EffectHue).setHue(progress)
-                    }
-                }
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
-
-    @Composable
-    fun SharpnessView() {
-        val sliderValue = remember { mutableFloatStateOf(0f) }
-        Text(text = "Sharpness:${sliderValue.floatValue}", fontSize = 8.sp)
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = -4f..4f,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectSharpen){
-                        (cameraEffect.effect as EffectSharpen).setSharpness(progress)
-                    }
-                }
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
-
-    @Composable
-    fun SaturationView() {
-        val sliderValue = remember { mutableFloatStateOf(0f) }
-        Text(text = "SaturationView:${sliderValue.floatValue}", fontSize = 8.sp)
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = -1f..1f,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                mEffectDataList.forEachIndexed { _, cameraEffect ->
-                    if (cameraEffect.effect is EffectSaturation){
-                        (cameraEffect.effect as EffectSaturation).setSaturation(progress)
-                    }
-                }
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
-
-    @Composable
-    fun BrightnessView(cameraUIState:CameraUIState) {
-        val sliderValue = remember { mutableFloatStateOf(0f) }
-        Text(text = "亮度:${sliderValue.floatValue}", fontSize = 8.sp)
-
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = cameraUIState.minBrightness..cameraUIState.maxBrightness,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
-            },
-            onValueChangeFinished = {
-            }
-        )
-    }
 
     @Composable
     fun ZoomView(cameraUIState:CameraUIState) {
@@ -512,6 +584,10 @@ class CameraDemoFragment : CameraFragment() {
 //                                addRenderEffect(it)
 //                            }
 
+//                            if (it is EffectSharpen){
+//                                addRenderEffect(it)
+//                            }
+
                             addRenderEffect(it)
                         }
                     }
@@ -523,7 +599,7 @@ class CameraDemoFragment : CameraFragment() {
                             height: Int,
                             format: IPreviewDataCallBack.DataFormat
                         ) {
-                            XLogger.d("新的数据来了------->${format} width:${width} height:${height}")
+//                            XLogger.d("新的数据来了------->${format} width:${width} height:${height}")
                             data?.let {
                                 val scale = 0.3f
                                 val newWidth = (width * scale).toInt()

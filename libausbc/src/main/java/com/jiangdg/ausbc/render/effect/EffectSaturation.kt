@@ -4,9 +4,11 @@ import android.content.Context
 import android.opengl.GLES20
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
+import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 import java.lang.reflect.Array.setFloat
 
 /**
+ * 饱和度
  * saturation: The degree of saturation or desaturation to apply to the image (0.0 - 2.0, with 1.0 as the default)
  */
 class EffectSaturation(context: Context) : AbstractEffect(context) {
@@ -40,5 +42,6 @@ class EffectSaturation(context: Context) : AbstractEffect(context) {
     fun setSaturation(saturation: Float) {
         this.saturation = saturation
         GLES20.glUniform1f(saturationLocation,saturation)
+        checkGlError("setSaturation")
     }
 }

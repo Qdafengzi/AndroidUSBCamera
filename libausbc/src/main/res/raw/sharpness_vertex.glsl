@@ -5,21 +5,21 @@ uniform float imageWidthFactor;
 uniform float imageHeightFactor;
 uniform float sharpness;
 
-varying highp vec2 vTextureCoord;
-varying highp vec2 leftTextureCoordinate;
-varying highp vec2 rightTextureCoordinate;
-varying highp vec2 topTextureCoordinate;
-varying highp vec2 bottomTextureCoordinate;
+varying vec2 vTextureCoord;
+varying vec2 leftTextureCoordinate;
+varying vec2 rightTextureCoordinate;
+varying vec2 topTextureCoordinate;
+varying vec2 bottomTextureCoordinate;
 
-varying highp float centerMultiplier;
-varying highp float edgeMultiplier;
+varying float centerMultiplier;
+varying float edgeMultiplier;
 
 void main()
 {
     gl_Position = aPosition;
 
-    highp vec2 widthStep = vec2(imageWidthFactor, 0.0);
-    highp vec2 heightStep = vec2(0.0, imageHeightFactor);
+    mediump vec2 widthStep = vec2(imageWidthFactor, 0.0);
+    mediump vec2 heightStep = vec2(0.0, imageHeightFactor);
 
     vTextureCoord = aTextureCoordinate.xy;
     leftTextureCoordinate = aTextureCoordinate.xy - widthStep;

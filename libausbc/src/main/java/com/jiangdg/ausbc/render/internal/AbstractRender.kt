@@ -103,7 +103,7 @@ abstract class AbstractRender(context: Context) {
         }
         mPositionLocation = GLES20.glGetAttribLocation(mProgram, "aPosition")
         mTextureCoordLocation = GLES20.glGetAttribLocation(mProgram, "aTextureCoordinate")
-        mTextureSampler = GLES20.glGetAttribLocation(mProgram, "uTextureSampler")
+        mTextureSampler = GLES20.glGetUniformLocation(mProgram, "uTextureSampler")
         if (isGLESStatusError()) {
             Logger.e(TAG, "create external texture failed, err = ${GLES20.glGetError()}")
             return

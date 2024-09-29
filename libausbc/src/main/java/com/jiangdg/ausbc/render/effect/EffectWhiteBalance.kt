@@ -4,6 +4,7 @@ import android.content.Context
 import android.opengl.GLES20
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
+import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 
 class EffectWhiteBalance(context: Context) : AbstractEffect(context) {
 
@@ -46,10 +47,12 @@ class EffectWhiteBalance(context: Context) : AbstractEffect(context) {
             temperatureLocation,
             if (this.temperature < 5000) (0.0004 * (this.temperature - 5000.0)).toFloat() else (0.00006 * (this.temperature - 5000.0)).toFloat()
         )
+        checkGlError("setTemperature")
     }
 
     fun setTint(tint: Float) {
         this.tint = tint
         GLES20.glUniform1f(tintLocation, (this.tint / 100.0).toFloat())
+        checkGlError("setTint")
     }
 }

@@ -2,8 +2,10 @@ package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
 import android.opengl.GLES20
+import android.util.Log
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
+import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 import java.nio.FloatBuffer
 
 class EffectImageLevel(context: Context) : AbstractEffect(context) {
@@ -21,6 +23,7 @@ class EffectImageLevel(context: Context) : AbstractEffect(context) {
 
     companion object {
         const val ID = 500
+        private const val TAG = "EffectImageLevel"
     }
 
     override fun getId(): Int = ID
@@ -44,6 +47,12 @@ class EffectImageLevel(context: Context) : AbstractEffect(context) {
         maxLocation = GLES20.glGetUniformLocation(mProgram, "levelMaximum")
         minOutputLocation = GLES20.glGetUniformLocation(mProgram, "minOutput")
         maxOutputLocation = GLES20.glGetUniformLocation(mProgram, "maxOutput")
+
+        // Check if all uniforms were found
+        if (minLocation == -1 || midLocation == -1 || maxLocation == -1 ||
+            minOutputLocation == -1 || maxOutputLocation == -1) {
+            Log.e(TAG,"Failed to get uniform locations in init")
+        }
     }
 
     override fun beforeDraw() {
@@ -103,9 +112,18 @@ class EffectImageLevel(context: Context) : AbstractEffect(context) {
 
     private fun updateUniforms() {
         GLES20.glUniform3fv(minLocation, 1, FloatBuffer.wrap(min))
+        checkGlError("glUniform3fv minLocation")
+
         GLES20.glUniform3fv(midLocation, 1, FloatBuffer.wrap(mid))
+        checkGlError("glUniform3fv midLocation")
+
         GLES20.glUniform3fv(maxLocation, 1, FloatBuffer.wrap(max))
+        checkGlError("glUniform3fv maxLocation")
+
         GLES20.glUniform3fv(minOutputLocation, 1, FloatBuffer.wrap(minOutput))
+        checkGlError("glUniform3fv minOutputLocation")
+
         GLES20.glUniform3fv(maxOutputLocation, 1, FloatBuffer.wrap(maxOutput))
+        checkGlError("glUniform3fv maxOutputLocation")
     }
 }
