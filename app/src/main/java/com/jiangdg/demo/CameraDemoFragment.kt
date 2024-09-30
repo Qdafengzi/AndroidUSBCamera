@@ -144,6 +144,8 @@ class CameraDemoFragment : CameraFragment() {
         val surfaceView = AspectRatioSurfaceView(requireContext())
         val width = ResUtils.dp2px(this.requireContext(),1080f)
         val height = ResUtils.dp2px(this.requireContext(),1080f)
+
+
         surfaceView.holder.addCallback(object :SurfaceHolder.Callback{
             override fun surfaceCreated(holder: SurfaceHolder) {
 
@@ -158,7 +160,7 @@ class CameraDemoFragment : CameraFragment() {
                 XLogger.d("surfaceChanged:${width}*${height}")
 //                surfaceSizeChanged(width, height)
 
-
+//                surfaceView.setAspectRatio(2160,2160)
 
             }
 
