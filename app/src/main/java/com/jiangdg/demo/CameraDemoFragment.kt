@@ -5,12 +5,20 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.SurfaceTexture
 import android.graphics.YuvImage
+import android.hardware.camera2.CameraAccessException
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.TextureView
+import android.view.TextureView.SurfaceTextureListener
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.background
@@ -42,6 +50,7 @@ import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.effect.EffectBrightness
 import com.jiangdg.ausbc.render.effect.EffectContrast
+import com.jiangdg.ausbc.render.effect.EffectCrop
 import com.jiangdg.ausbc.render.effect.EffectGamma
 import com.jiangdg.ausbc.render.effect.EffectHue
 import com.jiangdg.ausbc.render.effect.EffectImageLevel
@@ -51,8 +60,10 @@ import com.jiangdg.ausbc.render.effect.EffectWhiteBalance
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
+import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
+import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,6 +73,7 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
+import kotlin.math.min
 
 
 data class CameraUIState(
@@ -105,7 +117,7 @@ class CameraDemoFragment : CameraFragment() {
          *  800 * 600
          *  640 * 480
          *  640 * 360
-         *                     //各种分辨率：720 * 576
+         *  720 * 576
          */
 //        val width = ResUtils.dp2px(this.requireContext(),3840f)
 //        val height = ResUtils.dp2px(this.requireContext(),2880f)
@@ -129,12 +141,96 @@ class CameraDemoFragment : CameraFragment() {
     }
 
     override fun getCameraView(): IAspectRatio {
-//        val surfaceView = AspectRatioSurfaceView(requireContext())
+        val surfaceView = AspectRatioSurfaceView(requireContext())
+        val width = ResUtils.dp2px(this.requireContext(),1080f)
+        val height = ResUtils.dp2px(this.requireContext(),1080f)
+        surfaceView.holder.addCallback(object :SurfaceHolder.Callback{
+            override fun surfaceCreated(holder: SurfaceHolder) {
+
+            }
+
+            override fun surfaceChanged(
+                holder: SurfaceHolder,
+                format: Int,
+                width: Int,
+                height: Int
+            ) {
+                XLogger.d("surfaceChanged:${width}*${height}")
+//                surfaceSizeChanged(width, height)
+
+
+
+            }
+
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+
+            }
+
+        })
+        return surfaceView
+
+
+//        val textureView = AspectRatioTextureView(requireContext())
 //        val width = ResUtils.dp2px(this.requireContext(),1080f)
 //        val height = ResUtils.dp2px(this.requireContext(),1080f)
-//        surfaceView.setAspectRatio(width = width, height = height)
-//        return surfaceView
-        return AspectRatioSurfaceView(requireContext())
+//        textureView.surfaceTextureListener = object :SurfaceTextureListener{
+//            override fun onSurfaceTextureAvailable(
+//                surface: SurfaceTexture,
+//                width: Int,
+//                height: Int
+//            ) {
+//
+//            }
+//
+//            override fun onSurfaceTextureSizeChanged(
+//                surface: SurfaceTexture,
+//                width: Int,
+//                height: Int
+//            ) {
+//                updatePreview(textureView)
+//            }
+//
+//            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+//                return true
+//            }
+//
+//            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+//
+//            }
+//
+//        }
+//        return textureView
+
+
+//        return AspectRatioSurfaceView(requireContext())
+    }
+
+
+    private fun updatePreview(textureView: TextureView) {
+        try {
+            // 设置裁切变换
+            val matrix: Matrix = Matrix()
+            val viewRect = RectF(0f, 0f, textureView.width.toFloat(), textureView.height.toFloat())
+            val bufferRect = RectF(0f, 0f, 3840f, 2160f)
+            val centerX = viewRect.centerX()
+            val centerY = viewRect.centerY()
+
+            // 计算裁切区域（保持1:1比例）
+            val size = min(3840.0, 2160.0).toInt()
+            bufferRect[((3840 - size) / 2).toFloat(), ((2160 - size) / 2).toFloat(), ((3840 + size) / 2).toFloat()] =
+                ((2160 + size) / 2).toFloat()
+
+            matrix.setRectToRect(bufferRect, viewRect, Matrix.ScaleToFit.CENTER)
+            matrix.postRotate(90f, centerX, centerY)
+            textureView.setTransform(matrix)
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+        }
+    }
+
+
+    private fun surfaceSizeChanged(surfaceWidth: Int, surfaceHeight: Int) {
+        getCurrentCamera()?.setRenderSize(surfaceWidth, surfaceHeight)
     }
 
     val viewModel = CameraViewModel()
@@ -206,6 +302,14 @@ class CameraDemoFragment : CameraFragment() {
                 effect = EffectBrightness(requireActivity()),
                 coverResId = R.mipmap.filter0
             ),
+
+//            CameraEffect(
+//                EffectCrop.ID,
+//                "EffectCrop",
+//                CameraEffect.CLASSIFY_ID_FILTER,
+//                effect = EffectCrop(requireActivity()),
+//                coverResId = R.mipmap.filter0
+//            ),
         )
     }
 
@@ -219,8 +323,10 @@ class CameraDemoFragment : CameraFragment() {
         return mViewBinding.root
     }
 
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         mViewBinding.compose.setContent {
             val scrollState = rememberScrollState()
             // Create a nested scroll connection to handle nested scroll scenarios
@@ -427,6 +533,12 @@ class CameraDemoFragment : CameraFragment() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Button(
                 onClick = {
+//                    mEffectDataList.forEachIndexed { _, cameraEffect ->
+//                        if (cameraEffect.effect is EffectCrop) {
+//                            (cameraEffect.effect as EffectCrop).setAspectRatio(1f,1f)
+//                        }
+//                    }
+
                     (getCurrentCamera() as? CameraUVC)?.captureImage(object : ICaptureCallBack {
                         override fun onBegin() {
                             XLogger.e("拍照 开始---- }")
@@ -630,8 +742,6 @@ class CameraDemoFragment : CameraFragment() {
                         }
                     })
 
-
-//                    setRenderSize(ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt())
 
 
                     addPreviewDataCallBack(object : IPreviewDataCallBack {

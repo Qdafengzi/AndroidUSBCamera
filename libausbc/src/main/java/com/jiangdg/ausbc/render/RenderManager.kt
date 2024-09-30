@@ -22,7 +22,9 @@ import android.graphics.SurfaceTexture
 import android.opengl.EGLContext
 import android.os.*
 import android.provider.MediaStore
+import android.util.Log
 import android.view.Surface
+import com.elvishew.xlog.XLog
 import com.jiangdg.ausbc.callback.ICaptureCallBack
 import com.jiangdg.ausbc.callback.IPreviewDataCallBack
 import com.jiangdg.ausbc.render.env.RotateType
@@ -156,12 +158,17 @@ class RenderManager(
                 }
             }
             MSG_GL_DRAW -> {
+                Log.d("TAG","Draw------------>")
                 //Render camera data to SurfaceTexture
                 //Set the correction matrix of the image at the same time
+
                 mCameraSurfaceTexture?.updateTexImage()
                 mCameraSurfaceTexture?.getTransformMatrix(mTransformMatrix)
                 mCameraRender?.setTransformMatrix(mTransformMatrix)
-                val textureId = mEOSTextureId?.let { mCameraRender?.drawFrame(it) }
+
+                val textureId = mEOSTextureId?.let {
+                    mCameraRender?.drawFrame(it)
+                }
                 //Filter FBO and rendering
                 textureId?.let { fboId ->
                     var effectId = fboId
