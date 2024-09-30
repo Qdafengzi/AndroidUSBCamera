@@ -8,14 +8,13 @@ import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 import java.lang.reflect.Array.setFloat
 
 /**
- *contrast value ranges from 0.0 to 4.0, with 1.0 as the normal level
+ * gamma value ranges from 0.0 to 3.0, with 1.0 as the normal level
  */
-class EffectContrast(context: Context) : AbstractEffect(context) {
-    private var contrastLocation = 0
-    private var contrast = 1.2f
-
+class EffectGamma(context: Context) : AbstractEffect(context) {
+    private var gammaLocation = 0
+    private var gamma = 1.0f
     companion object {
-        const val ID = 900
+        const val ID = 1000
     }
 
     override fun getId(): Int = ID
@@ -24,24 +23,23 @@ class EffectContrast(context: Context) : AbstractEffect(context) {
 
     override fun getVertexSourceId(): Int = R.raw.base_vertex
 
-    override fun getFragmentSourceId(): Int = R.raw.effect_contrast_fragment
+    override fun getFragmentSourceId(): Int = R.raw.effect_gamma_fragment
 
     override fun init() {
         super.init()
-        contrastLocation = GLES20.glGetUniformLocation(mProgram, "contrast")
-        setContrast(contrast)
+        gammaLocation = GLES20.glGetUniformLocation(mProgram, "gamma")
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
         GLES20.glUseProgram(mProgram)
-        setContrast(contrast)
+        setGamma(gamma)
     }
 
-
-    fun setContrast(contrast: Float) {
-        this.contrast = contrast
-        GLES20.glUniform1f(contrastLocation, contrast)
-        checkGlError("glUniform1f contrast")
+    fun setGamma(gamma: Float) {
+        this.gamma = gamma
+        GLES20.glUniform1f(gammaLocation, gamma)
+        checkGlError("glUniform1f gamma")
     }
+
 }

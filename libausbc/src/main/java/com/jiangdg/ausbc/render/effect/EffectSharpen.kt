@@ -9,6 +9,7 @@ import com.jiangdg.ausbc.utils.OpenGLUtils
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 
 /**
+ * sharpness: from -4.0 to 4.0, with 0.0 as the normal level
  * todo:预览画面 大小改变要随之改变的
  */
 class EffectSharpen(context: Context) : AbstractEffect(context) {

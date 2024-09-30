@@ -67,7 +67,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
 
                 //下面的代码只是返回预览帧的callback
                 //裁切data
-                XLog.d("预览要求 ：${previewWidth} ${previewHeight} ${Thread.currentThread().name}")
+                //XLog.d("预览要求 ：${previewWidth} ${previewHeight} ${Thread.currentThread().name}")
                 // for preview callback
                 mPreviewDataCbList.forEach { cb ->
                     cb?.onPreviewData(data, previewWidth, previewHeight, IPreviewDataCallBack.DataFormat.NV21)

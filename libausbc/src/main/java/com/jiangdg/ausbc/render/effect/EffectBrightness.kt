@@ -8,14 +8,13 @@ import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
 import java.lang.reflect.Array.setFloat
 
 /**
- *contrast value ranges from 0.0 to 4.0, with 1.0 as the normal level
+ *  brightness value ranges from -1.0 to 1.0, with 0.0 as the normal level
  */
-class EffectContrast(context: Context) : AbstractEffect(context) {
-    private var contrastLocation = 0
-    private var contrast = 1.2f
-
+class EffectBrightness(context: Context) : AbstractEffect(context) {
+    private var brightnessLocation = 0
+    private var brightness = 0f
     companion object {
-        const val ID = 900
+        const val ID = 1100
     }
 
     override fun getId(): Int = ID
@@ -24,24 +23,22 @@ class EffectContrast(context: Context) : AbstractEffect(context) {
 
     override fun getVertexSourceId(): Int = R.raw.base_vertex
 
-    override fun getFragmentSourceId(): Int = R.raw.effect_contrast_fragment
+    override fun getFragmentSourceId(): Int = R.raw.effect_brightness_fragment
 
     override fun init() {
         super.init()
-        contrastLocation = GLES20.glGetUniformLocation(mProgram, "contrast")
-        setContrast(contrast)
+        brightnessLocation = GLES20.glGetUniformLocation(mProgram, "brightness")
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
         GLES20.glUseProgram(mProgram)
-        setContrast(contrast)
+        setBrightness(brightness)
+    }
+    fun setBrightness(brightness: Float) {
+        this.brightness = brightness
+        GLES20.glUniform1f(brightnessLocation, brightness)
+        checkGlError("glUniform1f brightness")
     }
 
-
-    fun setContrast(contrast: Float) {
-        this.contrast = contrast
-        GLES20.glUniform1f(contrastLocation, contrast)
-        checkGlError("glUniform1f contrast")
-    }
 }

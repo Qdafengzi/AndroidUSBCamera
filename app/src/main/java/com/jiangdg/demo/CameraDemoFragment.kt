@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -65,7 +66,9 @@ import com.jiangdg.ausbc.callback.IEncodeDataCallBack
 import com.jiangdg.ausbc.callback.IPreviewDataCallBack
 import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
+import com.jiangdg.ausbc.render.effect.EffectBrightness
 import com.jiangdg.ausbc.render.effect.EffectContrast
+import com.jiangdg.ausbc.render.effect.EffectGamma
 import com.jiangdg.ausbc.render.effect.EffectHue
 import com.jiangdg.ausbc.render.effect.EffectImageLevel
 import com.jiangdg.ausbc.render.effect.EffectSaturation
@@ -116,7 +119,7 @@ class CameraViewModel : ViewModel() {
 
 class CameraDemoFragment : CameraFragment() {
     override fun getCameraRequest(): CameraRequest {
-        val width = ResUtils.dp2px(this.requireContext(),1080f)
+        val width = ResUtils.dp2px(this.requireContext(),1920f)
         val height = ResUtils.dp2px(this.requireContext(),1920f)
 
         val request = CameraRequest.Builder()
@@ -193,6 +196,22 @@ class CameraDemoFragment : CameraFragment() {
                 "Contrast",
                 CameraEffect.CLASSIFY_ID_FILTER,
                 effect = EffectContrast(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectGamma.ID,
+                "Gamma",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectGamma(requireActivity()),
+                coverResId = R.mipmap.filter0
+            ),
+
+            CameraEffect(
+                EffectBrightness.ID,
+                "Brightness",
+                CameraEffect.CLASSIFY_ID_FILTER,
+                effect = EffectBrightness(requireActivity()),
                 coverResId = R.mipmap.filter0
             ),
         )
@@ -288,10 +307,10 @@ class CameraDemoFragment : CameraFragment() {
                 )
 
 
-                val saturationSliderValue = remember { mutableFloatStateOf(0f) }
+                val saturationSliderValue = remember { mutableFloatStateOf(1f) }
                 SliderView(
                     name = "Saturation",
-                    range = -1f..1f,
+                    range = 0f..2f,
                     sliderValue = saturationSliderValue,
                     onValueChange = { progress ->
                         saturationSliderValue.floatValue = progress
@@ -335,7 +354,7 @@ class CameraDemoFragment : CameraFragment() {
 
                 val brightnessSliderValue = remember { mutableFloatStateOf(0f) }
                 SliderView(
-                    name = "Brightness",
+                    name = "Brightness  by Camera",
                     range = cameraUIState.minBrightness..cameraUIState.maxBrightness,
                     sliderValue = brightnessSliderValue,
                     onValueChange = { progress ->
@@ -343,7 +362,49 @@ class CameraDemoFragment : CameraFragment() {
                         (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
                     }
                 )
-                ZoomView(cameraUIState)
+
+                val brightness2SliderValue = remember { mutableFloatStateOf(1f) }
+                SliderView(
+                    name = "Brightness by filter",
+                    range = -1f..1f,
+                    sliderValue = brightness2SliderValue,
+                    onValueChange = { progress ->
+                        brightness2SliderValue.floatValue = progress
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectBrightness){
+                                (cameraEffect.effect as EffectBrightness).setBrightness(progress)
+                            }
+                        }
+                    }
+                )
+
+                val gammaSliderValue = remember { mutableFloatStateOf(1f) }
+                SliderView(
+                    name = "Gamma",
+                    range = 0.0f..3f,
+                    sliderValue = gammaSliderValue,
+                    onValueChange = { progress ->
+                        gammaSliderValue.floatValue = progress
+                        //(getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
+                        mEffectDataList.forEachIndexed { _, cameraEffect ->
+                            if (cameraEffect.effect is EffectGamma){
+                                (cameraEffect.effect as EffectGamma).setGamma(progress)
+                            }
+                        }
+                    }
+                )
+
+//                val zoomSliderValue = remember { mutableFloatStateOf(1f) }
+//                SliderView(
+//                    name = "Zoom",
+//                    range = 1f..10f,
+//                    sliderValue = zoomSliderValue,
+//                    onValueChange = { progress ->
+//                        zoomSliderValue.floatValue = progress
+//                        (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
+//                    }
+//                )
+
                 TakePictureView()
             }
         }
@@ -415,9 +476,14 @@ class CameraDemoFragment : CameraFragment() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun SliderView(name:String ,range:ClosedFloatingPointRange<Float> = 0f..1f,sliderValue:MutableFloatState,onValueChange:(progress:Float)->Unit){
-        Text(text = "${name}:${sliderValue.floatValue}", fontSize = 8.sp)
+        Text(
+            modifier = Modifier.padding(start = 10.dp),
+            text = "${name}:${sliderValue.floatValue}", fontSize = 8.sp
+        )
         Slider(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(25.dp),
             value = sliderValue.floatValue,
             valueRange = range,
             onValueChange = {progress->
@@ -447,24 +513,6 @@ class CameraDemoFragment : CameraFragment() {
                         .shadow(6.dp, shape, clip = false)
                         .background(color = Color.White, shape)
                 )
-            }
-        )
-    }
-
-
-    @Composable
-    fun ZoomView(cameraUIState:CameraUIState) {
-        Text("Zoom")
-        val sliderValue = remember { mutableFloatStateOf(1f) }
-        Slider(
-            modifier = Modifier.fillMaxWidth(),
-            value = sliderValue.floatValue,
-            valueRange = 1f..cameraUIState.zoom,
-            onValueChange = {progress->
-                sliderValue.floatValue = progress
-//                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
-            },
-            onValueChangeFinished = {
             }
         )
     }
@@ -634,7 +682,7 @@ class CameraDemoFragment : CameraFragment() {
                             size: Int,
                             timestamp: Long
                         ) {
-                            XLogger.d("数据来了：${size} $timestamp")
+                            logWithInterval("数据来了：${size} $timestamp")
                         }
                     })
                     setRenderSize(100,100)
@@ -643,11 +691,11 @@ class CameraDemoFragment : CameraFragment() {
 //                    setZoom(2)
 
 
-                    val min = getBrightnessMin()?:0
-                    val max = getBrightnessMax()?:100
-//                val zoom = (getCurrentCamera() as? CameraUVC)?.getZoom()?:0f
-//                viewModel.updateZoom(zoom.toFloat())
-                    viewModel.updateBrightness(min,max)
+                    val min = getBrightnessMin() ?: 0
+                    val max = getBrightnessMax() ?: 100
+                    val zoom = (getCurrentCamera() as? CameraUVC)?.getZoom() ?: 0f
+                    viewModel.updateZoom(zoom.toFloat())
+                    viewModel.updateBrightness(min, max)
 //                XLogger.d("亮度 最大:${max} 最小：${min} zoom:${zoom}")
                 }
 
@@ -661,6 +709,15 @@ class CameraDemoFragment : CameraFragment() {
             ICameraStateCallBack.State.ERROR -> {
                 XLogger.d("相机错误-----》")
             }
+        }
+    }
+
+    var lastPrintTime = System.currentTimeMillis()
+
+    fun logWithInterval(text: String) {
+        if ((System.currentTimeMillis() - lastPrintTime) > 1000) {
+            XLogger.d(text)
+            lastPrintTime = System.currentTimeMillis()
         }
     }
 }
