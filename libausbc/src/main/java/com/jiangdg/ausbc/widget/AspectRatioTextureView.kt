@@ -17,11 +17,16 @@ package com.jiangdg.ausbc.widget
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
+import android.util.Size
 import android.view.Surface
 import android.view.TextureView
 import com.jiangdg.ausbc.utils.Logger
 import kotlin.math.abs
+import kotlin.math.log
 
 /** Adaptive TextureView
  * Aspect ratio (width:height, such as 4:3, 16:9).
@@ -34,7 +39,60 @@ class AspectRatioTextureView: TextureView, IAspectRatio {
 
     constructor(context: Context) : this(context, null)
     constructor(context: Context, attributeSet: AttributeSet?) : this(context, attributeSet, 0)
-    constructor(context: Context, attributeSet: AttributeSet?, defStyleAttr: Int) : super(context, attributeSet, defStyleAttr)
+    constructor(context: Context, attributeSet: AttributeSet?, defStyleAttr: Int) : super(context, attributeSet, defStyleAttr){
+        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surfaceTexture: android.graphics.SurfaceTexture, width: Int, height: Int) {
+            }
+
+            override fun onSurfaceTextureSizeChanged(surfaceTexture: android.graphics.SurfaceTexture, width: Int, height: Int) {
+                Log.d("TAG","onSurfaceTextureSizeChanged")
+                val previewSize = Size(2160,2160)
+                previewSize?.let {
+                    // Apply the transformation with the desired crop ratio
+                    applyCropTransform(width, height, it, 1f, 1f) // Example for 1:1 ratio
+                }
+            }
+
+            override fun onSurfaceTextureDestroyed(surfaceTexture: android.graphics.SurfaceTexture): Boolean {
+                return true
+            }
+
+            override fun onSurfaceTextureUpdated(surfaceTexture: android.graphics.SurfaceTexture) {}
+        }
+    }
+
+
+
+
+
+    private fun applyCropTransform(viewWidth: Int, viewHeight: Int, previewSize: Size, targetRatioWidth: Float, targetRatioHeight: Float) {
+        Log.d("裁切","开始裁切--------》")
+        val matrix = Matrix()
+        val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
+        val bufferRect = RectF(0f, 0f, previewSize.width.toFloat(), previewSize.height.toFloat())
+        val centerX = viewRect.centerX()
+        val centerY = viewRect.centerY()
+
+        // Calculate the target aspect ratio
+        val targetAspectRatio = targetRatioWidth / targetRatioHeight
+        val bufferAspectRatio = bufferRect.width() / bufferRect.height()
+
+        if (bufferAspectRatio > targetAspectRatio) {
+            // Wider than target
+            val scale = viewHeight.toFloat() / bufferRect.height()
+            matrix.setRectToRect(bufferRect, viewRect, Matrix.ScaleToFit.CENTER)
+            matrix.postScale(scale, scale, centerX, centerY)
+            matrix.postTranslate((viewWidth - viewHeight * targetAspectRatio) / 2f, 0f)
+        } else {
+            // Taller than target
+            val scale = viewWidth.toFloat() / bufferRect.width()
+            matrix.setRectToRect(bufferRect, viewRect, Matrix.ScaleToFit.CENTER)
+            matrix.postScale(scale, scale, centerX, centerY)
+            matrix.postTranslate(0f, (viewHeight - viewWidth / targetAspectRatio) / 2f)
+        }
+
+        setTransform(matrix)
+    }
 
     override fun setAspectRatio(width: Int, height: Int) {
         post {

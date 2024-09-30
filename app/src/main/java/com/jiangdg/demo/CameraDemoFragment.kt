@@ -13,49 +13,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.indication
-import androidx.compose.foundation.interaction.InteractionSource
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderColors
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableFloatState
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Color.Companion.Red
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.jiangdg.ausbc.MultiCameraClient
@@ -76,12 +50,9 @@ import com.jiangdg.ausbc.render.effect.EffectSharpen
 import com.jiangdg.ausbc.render.effect.EffectWhiteBalance
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
-import com.jiangdg.ausbc.widget.AspectRatioGLSurfaceView
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
-import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
-import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,7 +80,7 @@ class CameraViewModel : ViewModel() {
         }
     }
 
-    fun updateZoom(zoom: Float){
+    fun updateZoom(zoom: Float) {
         _cameraUIState.update {
             it.copy(zoom = zoom)
         }
@@ -119,17 +90,34 @@ class CameraViewModel : ViewModel() {
 
 class CameraDemoFragment : CameraFragment() {
     override fun getCameraRequest(): CameraRequest {
-        val width = ResUtils.dp2px(this.requireContext(),1920f)
-        val height = ResUtils.dp2px(this.requireContext(),1920f)
-
+        /**
+         *  3840 * 2160
+         *  3840 * 2880
+         *  3264 * 2448
+         *  2592 * 1944
+         *  2048 * 1536
+         *
+         *  1600 * 1200
+         *  1920 * 1080
+         *  1280 * 960
+         *  1280 * 720
+         *  1024 * 768
+         *  800 * 600
+         *  640 * 480
+         *  640 * 360
+         *                     //各种分辨率：720 * 576
+         */
+//        val width = ResUtils.dp2px(this.requireContext(),3840f)
+//        val height = ResUtils.dp2px(this.requireContext(),2880f)
+        //ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt()
         val request = CameraRequest.Builder()
-            .setPreviewWidth(width) // camera preview width
-            .setPreviewHeight(height) // camera preview height
+            .setPreviewWidth(3840) // camera preview width
+            .setPreviewHeight(2160) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
-            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // set preview format, MJPEG recommended
-//            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
+//            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // //todo:YUYV格式的很卡
+            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
             .setAspectRatioShow(true) // aspect render,default is true
             .setCaptureRawImage(true) // capture raw image picture when opengl mode
             .setRawPreviewData(true)  // preview raw image when opengl mode
@@ -140,9 +128,13 @@ class CameraDemoFragment : CameraFragment() {
 
     }
 
-    override fun getCameraView(): IAspectRatio? {
+    override fun getCameraView(): IAspectRatio {
+//        val surfaceView = AspectRatioSurfaceView(requireContext())
+//        val width = ResUtils.dp2px(this.requireContext(),1080f)
+//        val height = ResUtils.dp2px(this.requireContext(),1080f)
+//        surfaceView.setAspectRatio(width = width, height = height)
+//        return surfaceView
         return AspectRatioSurfaceView(requireContext())
-//        return AspectRatioTextureView(requireContext())
     }
 
     val viewModel = CameraViewModel()
@@ -237,11 +229,12 @@ class CameraDemoFragment : CameraFragment() {
             }
 
 
-            Column(modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(state = scrollState, enabled = true)
-                .nestedScroll(connection = nestedScrollConnection)
-                .background(color = Color.White),
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(state = scrollState, enabled = true)
+                    .nestedScroll(connection = nestedScrollConnection)
+                    .background(color = Color.White),
             ) {
                 val cameraUIState = viewModel.cameraUIState.collectAsState().value
                 val contrastSliderValue = remember { mutableFloatStateOf(1f) }
@@ -268,7 +261,7 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         hueSliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectHue){
+                            if (cameraEffect.effect is EffectHue) {
                                 (cameraEffect.effect as EffectHue).setHue(progress)
                             }
                         }
@@ -284,7 +277,7 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         sharpnessSliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectSharpen){
+                            if (cameraEffect.effect is EffectSharpen) {
                                 (cameraEffect.effect as EffectSharpen).setSharpness(progress)
                             }
                         }
@@ -299,8 +292,12 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         toneSliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectImageLevel){
-                                (cameraEffect.effect as EffectImageLevel).setMin(progress,1.0f,0.62f)
+                            if (cameraEffect.effect is EffectImageLevel) {
+                                (cameraEffect.effect as EffectImageLevel).setMin(
+                                    progress,
+                                    1.0f,
+                                    0.62f
+                                )
                             }
                         }
                     }
@@ -330,7 +327,7 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         temperatureSliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectWhiteBalance){
+                            if (cameraEffect.effect is EffectWhiteBalance) {
                                 (cameraEffect.effect as EffectWhiteBalance).setTemperature(progress)
                             }
                         }
@@ -345,7 +342,7 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         tintSliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectWhiteBalance){
+                            if (cameraEffect.effect is EffectWhiteBalance) {
                                 (cameraEffect.effect as EffectWhiteBalance).setTint(progress)
                             }
                         }
@@ -371,7 +368,7 @@ class CameraDemoFragment : CameraFragment() {
                     onValueChange = { progress ->
                         brightness2SliderValue.floatValue = progress
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectBrightness){
+                            if (cameraEffect.effect is EffectBrightness) {
                                 (cameraEffect.effect as EffectBrightness).setBrightness(progress)
                             }
                         }
@@ -387,7 +384,7 @@ class CameraDemoFragment : CameraFragment() {
                         gammaSliderValue.floatValue = progress
                         //(getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
                         mEffectDataList.forEachIndexed { _, cameraEffect ->
-                            if (cameraEffect.effect is EffectGamma){
+                            if (cameraEffect.effect is EffectGamma) {
                                 (cameraEffect.effect as EffectGamma).setGamma(progress)
                             }
                         }
@@ -432,15 +429,17 @@ class CameraDemoFragment : CameraFragment() {
                 onClick = {
                     (getCurrentCamera() as? CameraUVC)?.captureImage(object : ICaptureCallBack {
                         override fun onBegin() {
+                            XLogger.e("拍照 开始---- }")
                         }
 
                         override fun onError(error: String?) {
+                            XLogger.e("拍照 错误----》${error}")
                         }
 
                         override fun onComplete(path: String?) {
                             path?.let {
-                                XLogger.d("拍照完成:${path}")
-                                refreshGallery2(this@CameraDemoFragment.requireContext(),path)
+                                XLogger.d("拍照 完成:${path}")
+                                refreshGallery2(this@CameraDemoFragment.requireContext(), path)
                             }
                         }
                     })
@@ -469,52 +468,6 @@ class CameraDemoFragment : CameraFragment() {
                 Text("录像")
             }
         }
-    }
-
-
-
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun SliderView(name:String ,range:ClosedFloatingPointRange<Float> = 0f..1f,sliderValue:MutableFloatState,onValueChange:(progress:Float)->Unit){
-        Text(
-            modifier = Modifier.padding(start = 10.dp),
-            text = "${name}:${sliderValue.floatValue}", fontSize = 8.sp
-        )
-        Slider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(25.dp),
-            value = sliderValue.floatValue,
-            valueRange = range,
-            onValueChange = {progress->
-                onValueChange(progress)
-            },
-            onValueChangeFinished = {
-            },
-            track = {
-                Spacer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(14.dp)
-                        .background(color = Color(0xFF0099A1), shape = RoundedCornerShape(7.dp))
-                )
-            },
-
-            thumb = {
-                val shape = CircleShape
-                Spacer(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .indication(
-                            interactionSource = MutableInteractionSource(),
-                            indication = null
-                        )
-                        .hoverable(interactionSource = MutableInteractionSource())
-                        .shadow(6.dp, shape, clip = false)
-                        .background(color = Color.White, shape)
-                )
-            }
-        )
     }
 
     fun cropAndScaleRGBA(
@@ -551,6 +504,7 @@ class CameraDemoFragment : CameraFragment() {
 
         return newData
     }
+
     fun createBitmapFromRGBA(data: ByteArray, width: Int, height: Int): Bitmap {
         // Create a Bitmap from RGBA byte array
         return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
@@ -617,6 +571,26 @@ class CameraDemoFragment : CameraFragment() {
                 (getCurrentCamera() as? CameraUVC)?.apply {
                     setAutoFocus(true)
                     setAutoWhiteBalance(true)
+//                    setSaturation()
+//                    setSharpness()
+//                    setGain()
+//                    setGamma()
+//                    setContrast()
+//                    setHue()
+
+                    val previewSize = getSuitableSize(2160, 2160)
+                    XLogger.d("获取最佳的预览尺寸：${previewSize.width} * ${previewSize.height}")
+                    val isSupport = isPreviewSizeSupported(previewSize)
+                    XLogger.d("是否支持：${isSupport}")
+                    val allPreviewSize = getAllPreviewSizes()
+
+                    allPreviewSize.forEach {
+                        XLogger.d("各种分辨率：${it.width} * ${it.height}")
+                    }
+//                    updateResolution(1080,1920)
+//                    setRenderSize()
+
+
                     mEffectDataList.forEachIndexed { _, cameraEffect ->
                         cameraEffect.effect?.let {
 //                            if (it is EffectImageLevel){
@@ -642,7 +616,25 @@ class CameraDemoFragment : CameraFragment() {
                         }
                     }
 
-                    addPreviewDataCallBack(object :IPreviewDataCallBack{
+
+//                    updateResolution(1920,1920)
+                    setEncodeDataCallBack(object : IEncodeDataCallBack {
+                        override fun onEncodeData(
+                            type: IEncodeDataCallBack.DataType,
+                            buffer: ByteBuffer,
+                            offset: Int,
+                            size: Int,
+                            timestamp: Long
+                        ) {
+                            XLogger.d("编码:${type.name}")
+                        }
+                    })
+
+
+//                    setRenderSize(ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt())
+
+
+                    addPreviewDataCallBack(object : IPreviewDataCallBack {
                         override fun onPreviewData(
                             data: ByteArray?,
                             width: Int,
@@ -650,14 +642,15 @@ class CameraDemoFragment : CameraFragment() {
                             format: IPreviewDataCallBack.DataFormat
                         ) {
 //                            XLogger.d("新的数据来了------->${format} width:${width} height:${height}")
+//                            return
                             data?.let {
-                                val scale = 0.3f
+                                val scale = 0.5f
                                 val newWidth = (width * scale).toInt()
                                 val newHeight = (height * scale).toInt()
                                 val newData = cropNV21(
                                     data = data,
-                                    cropX = 100,
-                                    cropY = 100,
+                                    cropX = (width * 0.25f).toInt(),
+                                    cropY = (height * 0.25f).toInt(),
                                     width = width,
                                     height = height,
                                     cropWidth = newWidth,
@@ -674,7 +667,7 @@ class CameraDemoFragment : CameraFragment() {
                             }
                         }
                     })
-                    setEncodeDataCallBack(object :IEncodeDataCallBack{
+                    setEncodeDataCallBack(object : IEncodeDataCallBack {
                         override fun onEncodeData(
                             type: IEncodeDataCallBack.DataType,
                             buffer: ByteBuffer,
@@ -685,12 +678,6 @@ class CameraDemoFragment : CameraFragment() {
                             logWithInterval("数据来了：${size} $timestamp")
                         }
                     })
-                    setRenderSize(100,100)
-
-//                    sendCameraCommand()
-//                    setZoom(2)
-
-
                     val min = getBrightnessMin() ?: 0
                     val max = getBrightnessMax() ?: 100
                     val zoom = (getCurrentCamera() as? CameraUVC)?.getZoom() ?: 0f

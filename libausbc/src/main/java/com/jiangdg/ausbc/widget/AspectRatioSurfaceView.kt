@@ -17,8 +17,12 @@ package com.jiangdg.ausbc.widget
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Matrix
+import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Size
 import android.view.Surface
+import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.jiangdg.ausbc.utils.Logger
 import kotlin.math.abs
@@ -34,7 +38,35 @@ class AspectRatioSurfaceView: SurfaceView, IAspectRatio {
 
     constructor(context: Context) : this(context, null)
     constructor(context: Context, attributeSet: AttributeSet?) : this(context, attributeSet, 0)
-    constructor(context: Context, attributeSet: AttributeSet?, defStyleAttr: Int) : super(context, attributeSet, defStyleAttr)
+    constructor(context: Context, attributeSet: AttributeSet?, defStyleAttr: Int) : super(context, attributeSet, defStyleAttr){
+
+    }
+
+    private fun applyCropTransform(viewWidth: Int, viewHeight: Int, previewSize: Size, targetRatioWidth: Float, targetRatioHeight: Float) {
+        val matrix = Matrix()
+        val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
+        val bufferRect = RectF(0f, 0f, previewSize.width.toFloat(), previewSize.height.toFloat())
+        val centerX = viewRect.centerX()
+        val centerY = viewRect.centerY()
+
+        // Calculate the target aspect ratio
+        val targetAspectRatio = targetRatioWidth / targetRatioHeight
+        val bufferAspectRatio = bufferRect.width() / bufferRect.height()
+
+        if (bufferAspectRatio > targetAspectRatio) {
+            // Wider than target
+            val scale = viewHeight.toFloat() / bufferRect.height()
+            matrix.setRectToRect(bufferRect, viewRect, Matrix.ScaleToFit.CENTER)
+            matrix.postScale(scale, scale, centerX, centerY)
+            matrix.postTranslate((viewWidth - viewHeight * targetAspectRatio) / 2f, 0f)
+        } else {
+            // Taller than target
+            val scale = viewWidth.toFloat() / bufferRect.width()
+            matrix.setRectToRect(bufferRect, viewRect, Matrix.ScaleToFit.CENTER)
+            matrix.postScale(scale, scale, centerX, centerY)
+            matrix.postTranslate(0f, (viewHeight - viewWidth / targetAspectRatio) / 2f)
+        }
+    }
 
     override fun setAspectRatio(width: Int, height: Int) {
         post {

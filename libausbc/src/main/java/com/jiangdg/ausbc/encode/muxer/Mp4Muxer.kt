@@ -26,6 +26,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.text.format.DateUtils
+import android.util.Log
 import com.jiangdg.ausbc.callback.ICaptureCallBack
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.MediaUtils
@@ -157,6 +158,7 @@ class Mp4Muxer(
      */
     @Synchronized
     fun pumpStream(outputBuffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo, isVideo: Boolean) {
+//        Log.d("TAG","pumpStream")
         try {
             if (!isMuxerStarter()) {
                 return

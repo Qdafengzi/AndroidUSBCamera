@@ -29,6 +29,7 @@ import android.text.TextUtils;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
+import com.elvishew.xlog.XLog;
 import com.jiangdg.usb.USBMonitor;
 import com.jiangdg.usb.USBMonitor.UsbControlBlock;
 import com.jiangdg.utils.Size;
@@ -228,6 +229,7 @@ public class UVCCamera {
 			mCurrentWidth = supportedSizes.get(0).width;
 			mCurrentHeight = supportedSizes.get(0).height;
 		}
+		XLog.d("支持的宽高mCurrentWidth ："+mCurrentWidth +" mCurrentHeight:"+mCurrentHeight);
 		nativeSetPreviewSize(mNativePtr, mCurrentWidth, mCurrentHeight,
 			DEFAULT_PREVIEW_MIN_FPS, DEFAULT_PREVIEW_MAX_FPS, DEFAULT_PREVIEW_MODE, DEFAULT_BANDWIDTH);
     }

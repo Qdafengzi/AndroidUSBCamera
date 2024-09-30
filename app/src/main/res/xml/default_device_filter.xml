@@ -12,4 +12,21 @@
 	<usb-device product-id="258" vendor-id="9228" />
 	<usb-device product-id="16981" vendor-id="19" />
 	<usb-device product-id="5120" vendor-id="1409" />
+
+
+	<usb-device product-id="49153" vendor-id="7119" />
+<!--
+ name=/dev/bus/usb/002/002
+      vendor_id=7119
+      product_id=49153
+      class=239
+      subclass=2
+      protocol=1
+      manufacturer_name=Picup Media
+      product_name=GemCam V2
+      version=3.85
+      serial_number=GC2024022100200002677
+-->
 </usb>
+
+

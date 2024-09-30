@@ -253,8 +253,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
      * @property device see [UsbDevice]
      * @constructor Create camera by inherit it
      */
-    abstract class ICamera(val ctx: Context, val device: UsbDevice): Handler.Callback,
-        H264EncodeProcessor.OnEncodeReadyListener {
+    abstract class ICamera(val ctx: Context, val device: UsbDevice): Handler.Callback, H264EncodeProcessor.OnEncodeReadyListener {
         private var isCaptureStream: Boolean = false
         private var mMediaMuxer: Mp4Muxer? = null
         private var mEncodeDataCallBack: IEncodeDataCallBack? = null
@@ -514,10 +513,10 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                 callBack.onError("Has no audio permission")
                 return
             }
-            if (! CameraUtils.hasStoragePermission(mContext)) {
-                callBack.onError("Has no storage permission")
-                return
-            }
+//            if (! CameraUtils.hasStoragePermission(mContext)) {
+//                callBack.onError("Has no storage permission")
+//                return
+//            }
             val path = if (mp3Path.isNullOrEmpty()) {
                 "${mContext.getExternalFilesDir(null)?.path}/${System.currentTimeMillis()}.mp3"
             } else {
@@ -987,8 +986,8 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
 
         private fun getDefaultCameraRequest(): CameraRequest {
             return CameraRequest.Builder()
-                .setPreviewWidth(1280)
-                .setPreviewHeight(720)
+                .setPreviewWidth(1080)
+                .setPreviewHeight(1080)
                 .create()
         }
     }
