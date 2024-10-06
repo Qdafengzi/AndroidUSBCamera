@@ -5,3 +5,4 @@ include ':libausbc'
 include ':libuvc'
 include ':libnative'
 
+include ':gpuImage'

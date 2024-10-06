@@ -54,6 +54,7 @@ dependencies {
     implementation "androidx.core:core-ktx:1.13.1"
     implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation project(':gpuImage')
 //    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android"
     def lifecycle_version = "2.8.6"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
@@ -118,4 +119,6 @@ dependencies {
 
     // demo
 //    implementation 'com.github.jiangdongguo.AndroidUSBCamera:libausbc:3.3.3'
+
+//    implementation 'com.arthenica:mobile-ffmpeg-full-gpl:4.4'
 }
