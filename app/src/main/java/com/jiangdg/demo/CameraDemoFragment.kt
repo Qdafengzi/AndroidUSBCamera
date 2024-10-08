@@ -20,6 +20,7 @@ import android.view.SurfaceHolder
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,12 +72,12 @@ import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
-import com.jiangdg.demo.encoder.MediaEncoder
-import com.jiangdg.demo.encoder.RecordListener
 import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageLevelsFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageWhiteBalanceFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -114,6 +115,11 @@ class CameraViewModel : ViewModel() {
 }
 
 open class CameraDemoFragment : CameraFragment() {
+    val mLifecycleOwner  by lazy {
+        lifecycleScope
+    }
+
+
     override fun getCameraRequest(): CameraRequest {
         /**
          *  3840 * 2160
@@ -250,11 +256,15 @@ open class CameraDemoFragment : CameraFragment() {
         getCurrentCamera()?.setRenderSize(surfaceWidth, surfaceHeight)
     }
 
-    val viewModel = CameraViewModel()
+    private val viewModel = CameraViewModel()
 
-     protected val gpuImageMovieWriter by lazy {
+     private val gpuImageMovieWriter by lazy {
          GPUImageMovieWriter()
      }
+
+    private val gPUImageLevelsFilter  by lazy {
+        GPUImageLevelsFilter()
+    }
 
     private val mEffectDataList by lazy {
         arrayListOf(
@@ -336,6 +346,8 @@ open class CameraDemoFragment : CameraFragment() {
     private lateinit var mViewBinding: FragmentDemo01Binding
     override fun getCameraViewContainer(): ViewGroup? {
         return mViewBinding.fragmentContainer
+//        val container = FrameLayout(requireContext())
+//        return container
     }
 
     override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View? {
@@ -348,7 +360,11 @@ open class CameraDemoFragment : CameraFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val filterGroup = GPUImageFilterGroup()
+        val whiteBalanceFilter = GPUImageWhiteBalanceFilter()
+
         filterGroup.addFilter(gpuImageMovieWriter)
+        filterGroup.addFilter(gPUImageLevelsFilter)
+        filterGroup.addFilter(whiteBalanceFilter)
         mViewBinding.imageView.filter = filterGroup
         gpuImageMovieWriter.setFrameRate(30)
         mViewBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_CONTINUOUSLY)
@@ -369,11 +385,177 @@ open class CameraDemoFragment : CameraFragment() {
                     .nestedScroll(connection = nestedScrollConnection)
                     .background(color = Color.White),
             ) {
-                Filters1()
+                Filters2()
                 TakePictureView()
             }
+
         }
     }
+
+
+    @Composable
+    fun Filters2() {
+        val cameraUIState = viewModel.cameraUIState.collectAsState().value
+        val contrastSliderValue = remember { mutableFloatStateOf(1f) }
+        SliderView(
+            name = "Contrast",
+            range = 0f..4f,
+            sliderValue = contrastSliderValue,
+            onValueChange = { progress ->
+                contrastSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectContrast) {
+                        (cameraEffect.effect as EffectContrast).setContrast(progress)
+                    }
+                }
+            }
+        )
+
+
+        val hueSliderValue = remember { mutableFloatStateOf(90f) }
+        SliderView(
+            name = "Hue",
+            range = 0f..360f,
+            sliderValue = hueSliderValue,
+            onValueChange = { progress ->
+                hueSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectHue) {
+                        (cameraEffect.effect as EffectHue).setHue(progress)
+                    }
+                }
+            }
+        )
+
+
+        val sharpnessSliderValue = remember { mutableFloatStateOf(0f) }
+        SliderView(
+            name = "Sharpness",
+            range = -4f..4f,
+            sliderValue = sharpnessSliderValue,
+            onValueChange = { progress ->
+                sharpnessSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectSharpen) {
+                        (cameraEffect.effect as EffectSharpen).setSharpness(progress)
+                    }
+                }
+            }
+        )
+
+        val toneSliderValue = remember { mutableFloatStateOf(0f) }
+        SliderView(
+            name = "Tone",
+            range = -0.3f..0.3f,
+            sliderValue = toneSliderValue,
+            onValueChange = { progress ->
+                toneSliderValue.floatValue = progress
+                gPUImageLevelsFilter.setMin(   progress,
+                    1f, 1f, 0f, 1f)
+            }
+        )
+
+
+        val saturationSliderValue = remember { mutableFloatStateOf(1f) }
+        SliderView(
+            name = "Saturation",
+            range = 0f..2f,
+            sliderValue = saturationSliderValue,
+            onValueChange = { progress ->
+                saturationSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectSaturation) {
+                        (cameraEffect.effect as EffectSaturation).setSaturation(progress)
+                    }
+                }
+            }
+        )
+
+        val temperatureSliderValue = remember { mutableFloatStateOf(5000f) }
+        SliderView(
+            name = "temperature",
+            range = 2000f..9000f,
+            sliderValue = temperatureSliderValue,
+            onValueChange = { progress ->
+                temperatureSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectWhiteBalance) {
+                        (cameraEffect.effect as EffectWhiteBalance).setTemperature(progress)
+                    }
+                }
+            }
+        )
+
+        val tintSliderValue = remember { mutableFloatStateOf(50f) }
+        SliderView(
+            name = "tint",
+            range = 0f..100f,
+            sliderValue = tintSliderValue,
+            onValueChange = { progress ->
+                tintSliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectWhiteBalance) {
+                        (cameraEffect.effect as EffectWhiteBalance).setTint(progress)
+                    }
+                }
+            }
+        )
+
+        val brightnessSliderValue = remember { mutableFloatStateOf(0f) }
+        SliderView(
+            name = "Brightness  by Camera",
+            range = cameraUIState.minBrightness..cameraUIState.maxBrightness,
+            sliderValue = brightnessSliderValue,
+            onValueChange = { progress ->
+                brightnessSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
+            }
+        )
+
+        val brightness2SliderValue = remember { mutableFloatStateOf(1f) }
+        SliderView(
+            name = "Brightness by filter",
+            range = -1f..1f,
+            sliderValue = brightness2SliderValue,
+            onValueChange = { progress ->
+                brightness2SliderValue.floatValue = progress
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectBrightness) {
+                        (cameraEffect.effect as EffectBrightness).setBrightness(progress)
+                    }
+                }
+            }
+        )
+
+        val gammaSliderValue = remember { mutableFloatStateOf(1f) }
+        SliderView(
+            name = "Gamma",
+            range = 0.0f..3f,
+            sliderValue = gammaSliderValue,
+            onValueChange = { progress ->
+                gammaSliderValue.floatValue = progress
+                //(getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
+                mEffectDataList.forEachIndexed { _, cameraEffect ->
+                    if (cameraEffect.effect is EffectGamma) {
+                        (cameraEffect.effect as EffectGamma).setGamma(progress)
+                    }
+                }
+            }
+        )
+
+//                val zoomSliderValue = remember { mutableFloatStateOf(1f) }
+//                SliderView(
+//                    name = "Zoom",
+//                    range = 1f..10f,
+//                    sliderValue = zoomSliderValue,
+//                    onValueChange = { progress ->
+//                        zoomSliderValue.floatValue = progress
+//                        (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
+//                    }
+//                )
+
+    }
+
 
     @Composable
     fun Filters1() {
@@ -562,6 +744,7 @@ open class CameraDemoFragment : CameraFragment() {
 
     @Composable
     fun TakePictureView() {
+        XLogger.d("TakePictureView")
         val scope = rememberCoroutineScope()
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -616,25 +799,10 @@ open class CameraDemoFragment : CameraFragment() {
         }
     }
 
-    private fun createFolder() {
-        val folder =
-            File(requireContext().getExternalFilesDir(Environment.DIRECTORY_DCIM)!!.path + "/.media")
-
-        if (!folder.exists()) folder.mkdirs()
-    }
-    private fun createFile(ext: String = ".jpg"): File {
-        return File(
-            requireContext().getExternalFilesDir(Environment.DIRECTORY_DCIM)!!.path
-                    + "/.media" + "/"
-                    + System.currentTimeMillis()
-                    + ext
-        )
-    }
-
     @Composable
     fun RecordButton() {
         val scope = rememberCoroutineScope()
-
+        XLogger.d("RecordButton")
         Button(onClick = {
 //                (getCurrentCamera() as? CameraUVC)?.captureVideoStart(object : ICaptureCallBack {
 //                    override fun onBegin() {
@@ -650,9 +818,6 @@ open class CameraDemoFragment : CameraFragment() {
 //                    }
 //                }, path = "")
             scope.launch(Dispatchers.IO) {
-//                createFolder()
-//                val file = createFile(".mp4")
-
                 val videoFile = File(requireContext().cacheDir, "${System.currentTimeMillis()}.mp4")
                 videoFile.createNewFile()
                 gpuImageMovieWriter.apply {
@@ -797,6 +962,7 @@ open class CameraDemoFragment : CameraFragment() {
                     val isSupport = isPreviewSizeSupported(previewSize)
                     XLogger.d("是否支持：${isSupport}")
                     val allPreviewSize = getAllPreviewSizes()
+                    gpuImageMovieWriter.setFrameRate(30)
 
                     allPreviewSize.forEach {
                         XLogger.d("各种分辨率：${it.width} * ${it.height}")
@@ -853,7 +1019,10 @@ open class CameraDemoFragment : CameraFragment() {
                         ) {
 //                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             data?.let {
-                                mViewBinding.imageView.updatePreviewFrame(data,width,height)
+                                mLifecycleOwner.launch(Dispatchers.IO) {
+                                    mViewBinding.imageView.updatePreviewFrame(data, width, height)
+                                }
+
                                 return@let
                                 val scale = 0.5f
                                 val newWidth = (width * scale).toInt()
@@ -867,7 +1036,11 @@ open class CameraDemoFragment : CameraFragment() {
                                     cropWidth = newWidth,
                                     cropHeight = newHeight
                                 )
-                                mViewBinding.imageView.updatePreviewFrame(newData,newWidth,newHeight)
+                                mViewBinding.imageView.updatePreviewFrame(
+                                    newData,
+                                    newWidth,
+                                    newHeight
+                                )
                             }
                         }
                     })

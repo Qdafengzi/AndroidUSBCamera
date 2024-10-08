@@ -31,6 +31,8 @@ import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
+import androidx.annotation.NonNull;
+
 import com.jiangdg.utils.XLogger;
 
 import java.io.IOException;
@@ -106,17 +108,39 @@ public class MediaVideoEncoder extends MediaEncoder {
 
             return;
         }
-        XLogger.d("selected codec:"+  videoCodecInfo.getName());
+        XLogger.d("录制 selected codec:"+  videoCodecInfo.getName());
 
         final MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, mWidth, mHeight);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);    // API >= 18
         format.setInteger(MediaFormat.KEY_BIT_RATE, calcBitRate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-        XLogger.d("format:"+ format);
+        XLogger.d("录制配置 format:"+ format);
 
         mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
         mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+
+        mMediaCodec.setCallback(new MediaCodec.Callback() {
+            @Override
+            public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                XLogger.d("录制：onInputBufferAvailable");
+            }
+
+            @Override
+            public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
+                XLogger.d("录制：onOutputBufferAvailable");
+            }
+
+            @Override
+            public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
+            XLogger.d("录制错误："+e.getMessage());
+            }
+
+            @Override
+            public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
+                XLogger.d("录制：onOutputFormatChanged");
+            }
+        });
         // get Surface for encoder input
         // this method only can call between #configure and #start
         mSurface = mMediaCodec.createInputSurface();    // API >= 18
@@ -171,22 +195,20 @@ public class MediaVideoEncoder extends MediaEncoder {
      * @param mimeType
      * @return null if no codec matched
      */
-    protected static final MediaCodecInfo selectVideoCodec(final String mimeType) {
-        if (DEBUG) Log.v(TAG, "selectVideoCodec:");
-
+    protected  MediaCodecInfo selectVideoCodec(final String mimeType) {
+        XLogger.d("selectVideoCodec:");
         // get the list of available codecs
-        final int numCodecs = MediaCodecList.getCodecCount();
-        for (int i = 0; i < numCodecs; i++) {
-            final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-
+        MediaCodecList codecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
+        MediaCodecInfo[] codecInfos = codecList.getCodecInfos();
+        for (MediaCodecInfo codecInfo : codecInfos) {
             if (!codecInfo.isEncoder()) {    // skipp decoder
                 continue;
             }
             // select first codec that match a specific MIME type and color format
             final String[] types = codecInfo.getSupportedTypes();
-            for (int j = 0; j < types.length; j++) {
-                if (types[j].equalsIgnoreCase(mimeType)) {
-                    if (DEBUG) Log.i(TAG, "codec:" + codecInfo.getName() + ",MIME=" + types[j]);
+            for (String type : types) {
+                if (type.equalsIgnoreCase(mimeType)) {
+                    XLogger.d("codec:" + codecInfo.getName() + ",MIME=" + type);
                     final int format = selectColorFormat(codecInfo, mimeType);
                     if (format > 0) {
                         return codecInfo;
@@ -194,6 +216,25 @@ public class MediaVideoEncoder extends MediaEncoder {
                 }
             }
         }
+//        final int numCodecs = MediaCodecList.getCodecCount();
+//        for (int i = 0; i < numCodecs; i++) {
+//            final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+//
+//            if (!codecInfo.isEncoder()) {    // skipp decoder
+//                continue;
+//            }
+//            // select first codec that match a specific MIME type and color format
+//            final String[] types = codecInfo.getSupportedTypes();
+//            for (String type : types) {
+//                if (type.equalsIgnoreCase(mimeType)) {
+//                    XLogger.d("codec:" + codecInfo.getName() + ",MIME=" + type);
+//                    final int format = selectColorFormat(codecInfo, mimeType);
+//                    if (format > 0) {
+//                        return codecInfo;
+//                    }
+//                }
+//            }
+//        }
         return null;
     }
 
@@ -202,8 +243,8 @@ public class MediaVideoEncoder extends MediaEncoder {
      *
      * @return 0 if no colorFormat is matched
      */
-    protected static final int selectColorFormat(final MediaCodecInfo codecInfo, final String mimeType) {
-        if (DEBUG) Log.i(TAG, "selectColorFormat: ");
+    protected int selectColorFormat(final MediaCodecInfo codecInfo, final String mimeType) {
+        XLogger.d("selectColorFormat");
         int result = 0;
         final MediaCodecInfo.CodecCapabilities caps;
         try {
@@ -222,7 +263,7 @@ public class MediaVideoEncoder extends MediaEncoder {
             }
         }
         if (result == 0)
-            Log.e(TAG, "couldn't find a good color format for " + codecInfo.getName() + " / " + mimeType);
+            XLogger.d("couldn't find a good color format for " + codecInfo.getName() + " / " + mimeType);
         return result;
     }
 
@@ -241,8 +282,8 @@ public class MediaVideoEncoder extends MediaEncoder {
         };
     }
 
-    private static final boolean isRecognizedViewoFormat(final int colorFormat) {
-        if (DEBUG) Log.i(TAG, "isRecognizedViewoFormat:colorFormat=" + colorFormat);
+    private static boolean isRecognizedViewoFormat(final int colorFormat) {
+        XLogger.d( "isRecognizedViewoFormat:colorFormat=" + colorFormat);
         final int n = recognizedFormats != null ? recognizedFormats.length : 0;
         for (int i = 0; i < n; i++) {
             if (recognizedFormats[i] == colorFormat) {
@@ -254,11 +295,12 @@ public class MediaVideoEncoder extends MediaEncoder {
 
     @Override
     protected void signalEndOfInputStream() {
-        if (DEBUG) Log.d(TAG, "sending EOS to encoder");
+        XLogger.d("sending EOS to encoder");
         if (mMediaCodec != null) {
             try {
                 mMediaCodec.signalEndOfInputStream();    // API >= 18
             } catch (IllegalStateException e) {
+                XLogger.e(" "+e.getMessage());
             }
         }
         mIsEOS = true;

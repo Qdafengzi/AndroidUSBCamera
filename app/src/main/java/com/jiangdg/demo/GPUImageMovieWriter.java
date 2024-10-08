@@ -93,7 +93,7 @@ public class GPUImageMovieWriter extends GPUImageFilter {
     }
 
     public synchronized void prepareRecording(final String outputPath, final int width, final int height) {
-        XLogger.d("录制-------prepareRecording ---"+width +"*"+height);
+        XLogger.d("录制-------prepareRecording ---"+width +"*"+height + "path:"+ outputPath);
         runOnDraw(() -> {
             if (mIsRecording) {
                 XLogger.d("video bug GePU write already in recording");

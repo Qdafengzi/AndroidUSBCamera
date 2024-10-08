@@ -319,6 +319,7 @@ public abstract class MediaEncoder implements Runnable {
      * drain encoded data and write them to muxer
      */
     protected void drain() {
+        XLogger.d("drain--------->");
         if (mMediaCodec == null) return;
         ByteBuffer[] encoderOutputBuffers = null;
         try {
@@ -364,7 +365,9 @@ public abstract class MediaEncoder implements Runnable {
                 // get output format from codec and pass them to muxer
                 // getOutputFormat should be called after INFO_OUTPUT_FORMAT_CHANGED otherwise crash.
                 final MediaFormat format = mMediaCodec.getOutputFormat(); // API >= 16
+
                 mTrackIndex = muxer.addTrack(format);
+               XLogger.d("录制配置"+ "Muxer Format: " + format.toString() +"  "+mTrackIndex);
                 mMuxerStarted = true;
                 if (!muxer.start()) {
                     // we should wait until muxer is ready
