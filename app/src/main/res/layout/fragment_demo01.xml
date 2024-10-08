@@ -20,6 +20,8 @@
         android:id="@+id/imageView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:scaleY="1.01"
+        android:scaleX="1.01"
         app:gpuimage_surface_type="surface_view"
         app:layout_constraintDimensionRatio="w,1:1"
         app:layout_constraintEnd_toEndOf="parent"

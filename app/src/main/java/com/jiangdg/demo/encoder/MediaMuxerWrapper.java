@@ -29,14 +29,13 @@ import android.media.MediaMuxer;
 import android.util.Log;
 
 
+import com.jiangdg.utils.XLogger;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 @TargetApi(18)
 public class MediaMuxerWrapper {
-    private static final boolean DEBUG = false;
-    private static final String TAG = "MediaMuxerWrapper";
-
     //private static final String DIR_NAME = "AVRecSample";
     //private static final SimpleDateFormat mDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US);
 
@@ -58,18 +57,24 @@ public class MediaMuxerWrapper {
     }
 
     public void prepare() throws IOException {
-        if (mVideoEncoder != null)
+        if (mVideoEncoder != null){
+            XLogger.d("录制-------->prepare");
             mVideoEncoder.prepare();
+        }
     }
 
     public void startRecording() {
-        if (mVideoEncoder != null)
+        if (mVideoEncoder != null){
             mVideoEncoder.startRecording();
+            XLogger.d("录制-------->startRecording");
+        }
     }
 
-    public void stopRecording(MediaEncoder.RecordListener recordListener) {
-        if (mVideoEncoder != null)
+    public void stopRecording(RecordListener recordListener) {
+        if (mVideoEncoder != null) {
+            XLogger.d("录制-------->stopRecording");
             mVideoEncoder.stopRecording(recordListener);
+        }
         mVideoEncoder = null;
     }
 
@@ -98,13 +103,13 @@ public class MediaMuxerWrapper {
      * @return true when muxer is ready to write
      */
     /*package*/ synchronized boolean start() {
-        if (DEBUG) Log.v(TAG,  "start:");
+        XLogger.d(  "start:");
         mStatredCount++;
         if ((mEncoderCount > 0) && (mStatredCount == mEncoderCount)) {
             mMediaMuxer.start();
             mIsStarted = true;
             notifyAll();
-            if (DEBUG) Log.v(TAG,  "MediaMuxer started:");
+            XLogger.d( "MediaMuxer started:");
         }
         return mIsStarted;
     }
@@ -113,13 +118,13 @@ public class MediaMuxerWrapper {
      * request stop recording from encoder when encoder received EOS
     */
     /*package*/ synchronized boolean stop() {
-        if (DEBUG) Log.v(TAG,  "stop:mStatredCount=" + mStatredCount);
+        XLogger.d("stop:mStatredCount=" + mStatredCount);
         mStatredCount--;
         if ((mEncoderCount > 0) && (mStatredCount <= 0)) {
             mMediaMuxer.stop();
             mMediaMuxer.release();
             mIsStarted = false;
-            if (DEBUG) Log.v(TAG,  "MediaMuxer stopped:");
+            XLogger.d( "MediaMuxer stopped:");
             return true;
         }
         return false;
@@ -134,7 +139,7 @@ public class MediaMuxerWrapper {
         if (mIsStarted)
             throw new IllegalStateException("muxer already started");
         final int trackIx = mMediaMuxer.addTrack(format);
-        if (DEBUG) Log.i(TAG, "addTrack:trackNum=" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format);
+        XLogger.d("addTrack:trackNum=" + mEncoderCount + ",trackIx=" + trackIx + ",format=" + format);
         return trackIx;
     }
 
@@ -156,7 +161,7 @@ public class MediaMuxerWrapper {
             mMediaMuxer.start();
             mIsStarted = true;
             notifyAll();
-            if (DEBUG) Log.v(TAG,  "MediaMuxer force start");
+            XLogger.d("MediaMuxer force start");
         }
     }
 

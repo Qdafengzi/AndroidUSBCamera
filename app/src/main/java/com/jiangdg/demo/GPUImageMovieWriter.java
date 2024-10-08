@@ -7,6 +7,7 @@ import com.jiangdg.demo.encoder.EglCore;
 import com.jiangdg.demo.encoder.MediaEncoder;
 import com.jiangdg.demo.encoder.MediaMuxerWrapper;
 import com.jiangdg.demo.encoder.MediaVideoEncoder;
+import com.jiangdg.demo.encoder.RecordListener;
 import com.jiangdg.demo.encoder.WindowSurface;
 import com.jiangdg.utils.XLogger;
 
@@ -92,24 +93,22 @@ public class GPUImageMovieWriter extends GPUImageFilter {
     }
 
     public synchronized void prepareRecording(final String outputPath, final int width, final int height) {
+        XLogger.d("录制-------prepareRecording ---"+width +"*"+height);
         runOnDraw(() -> {
             if (mIsRecording) {
-                XLogger.d("video bug GPU write already in recording");
+                XLogger.d("video bug GePU write already in recording");
+                XLogger.e("录制-------正在进行");
                 return;
             }
 
             try {
                 mMuxer = new MediaMuxerWrapper(outputPath);
-
                 // for video capturing
                 mVideoEncoder = new MediaVideoEncoder(mMuxer, mMediaEncoderListener, width, height, frameRate);
-
                 mMuxer.prepare();
-
-                XLogger.d("video bug start record");
+                XLogger.d("录制-------->prepareRecording");
             } catch (Exception e) {
-                XLogger.e("video bug error"+e.getMessage());
-                e.printStackTrace();
+                XLogger.e("录制------>video bug error"+e.getMessage());
                 if (gpuImageErrorListener != null) {
                     gpuImageErrorListener.onError();
                 }
@@ -117,7 +116,7 @@ public class GPUImageMovieWriter extends GPUImageFilter {
         });
     }
 
-    public synchronized void stopRecording(final MediaEncoder.RecordListener recordListener) {
+    public synchronized void stopRecording(final RecordListener recordListener) {
         runOnDraw(() -> {
             if (!mIsRecording) {
                 return;
@@ -127,6 +126,7 @@ public class GPUImageMovieWriter extends GPUImageFilter {
                 mMuxer.stopRecording(recordListener);
                 mIsRecording = false;
                 releaseEncodeSurface();
+                XLogger.d("暂停了");
             } catch (Exception e) {
                 XLogger.d("error:"+e.getMessage());
             }
@@ -158,12 +158,12 @@ public class GPUImageMovieWriter extends GPUImageFilter {
     private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
         @Override
         public void onPrepared(final MediaEncoder encoder) {
-            XLogger.d("onPrepared...");
+            XLogger.d("onPrepared..."+encoder.getOutputPath());
         }
 
         @Override
         public void onStopped(final MediaEncoder encoder) {
-            XLogger.d("onStopped...");
+            XLogger.d("onStopped..."+encoder.getOutputPath());
         }
 
         @Override
@@ -186,8 +186,7 @@ public class GPUImageMovieWriter extends GPUImageFilter {
                     }
                 }
             } catch (Exception e) {
-
-                XLogger.d("video bug location>>>"+e.getMessage());
+                XLogger.e("video bug location>>>"+e.getMessage());
                 if (startRecordListener != null) {
                     startRecordListener.onRecordError(e);
                 }

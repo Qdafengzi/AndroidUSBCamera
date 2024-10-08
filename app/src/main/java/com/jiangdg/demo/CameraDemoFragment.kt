@@ -8,37 +8,46 @@ import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.RectF
-import android.graphics.SurfaceTexture
 import android.graphics.YuvImage
 import android.hardware.camera2.CameraAccessException
-import android.media.MediaRecorder
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.view.TextureView
-import android.view.TextureView.SurfaceTextureListener
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.jiangdg.ausbc.MultiCameraClient
@@ -51,7 +60,6 @@ import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.effect.EffectBrightness
 import com.jiangdg.ausbc.render.effect.EffectContrast
-import com.jiangdg.ausbc.render.effect.EffectCrop
 import com.jiangdg.ausbc.render.effect.EffectGamma
 import com.jiangdg.ausbc.render.effect.EffectHue
 import com.jiangdg.ausbc.render.effect.EffectImageLevel
@@ -61,14 +69,13 @@ import com.jiangdg.ausbc.render.effect.EffectWhiteBalance
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
-import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.demo.databinding.FragmentDemo01Binding
 import com.jiangdg.demo.encoder.MediaEncoder
-import com.jiangdg.demo.encoder.MediaEncoder.RecordListener
+import com.jiangdg.demo.encoder.RecordListener
 import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
-import jp.co.cyberagent.android.gpuimage.GPUImageView.RENDERMODE_WHEN_DIRTY
+import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -129,10 +136,10 @@ open class CameraDemoFragment : CameraFragment() {
 //        val height = ResUtils.dp2px(this.requireContext(),2880f)
         //ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt()
         val request = CameraRequest.Builder()
-//            .setPreviewWidth(3840) // camera preview width
-//            .setPreviewHeight(2160) // camera preview height
-            .setPreviewWidth(720) // camera preview width
-            .setPreviewHeight(480) // camera preview height
+            .setPreviewWidth(3840) // camera preview width
+            .setPreviewHeight(2160) // camera preview height
+//            .setPreviewWidth(720) // camera preview width
+//            .setPreviewHeight(480) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
@@ -252,7 +259,6 @@ open class CameraDemoFragment : CameraFragment() {
     private val mEffectDataList by lazy {
         arrayListOf(
 //            CameraEffect.NONE_FILTER,
-
             CameraEffect(
                 EffectImageLevel.ID,
                 "ImageLevel",
@@ -344,10 +350,9 @@ open class CameraDemoFragment : CameraFragment() {
         val filterGroup = GPUImageFilterGroup()
         filterGroup.addFilter(gpuImageMovieWriter)
         mViewBinding.imageView.filter = filterGroup
-
         gpuImageMovieWriter.setFrameRate(30)
+        mViewBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_CONTINUOUSLY)
         gpuImageMovieWriter.gpuImageErrorListener = GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
-
 
         mViewBinding.compose.setContent {
             val scrollState = rememberScrollState()
@@ -364,14 +369,14 @@ open class CameraDemoFragment : CameraFragment() {
                     .nestedScroll(connection = nestedScrollConnection)
                     .background(color = Color.White),
             ) {
-                Filters()
+                Filters1()
                 TakePictureView()
             }
         }
     }
 
     @Composable
-    fun Filters() {
+    fun Filters1() {
         val cameraUIState = viewModel.cameraUIState.collectAsState().value
         val contrastSliderValue = remember { mutableFloatStateOf(1f) }
         SliderView(
@@ -557,38 +562,80 @@ open class CameraDemoFragment : CameraFragment() {
 
     @Composable
     fun TakePictureView() {
+        val scope = rememberCoroutineScope()
+
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(
-                onClick = {
+            Column {
+                var bitmap  by  remember {
+                    mutableStateOf<Bitmap?>(null)
+                }
+
+                Button(
+                    onClick = {
 //                    mEffectDataList.forEachIndexed { _, cameraEffect ->
 //                        if (cameraEffect.effect is EffectCrop) {
 //                            (cameraEffect.effect as EffectCrop).setAspectRatio(1f,1f)
 //                        }
 //                    }
+//                    (getCurrentCamera() as? CameraUVC)?.captureImage(object : ICaptureCallBack {
+//                        override fun onBegin() {
+//                            XLogger.e("拍照 开始---- }")
+//                        }
+//
+//                        override fun onError(error: String?) {
+//                            XLogger.e("拍照 错误----》${error}")
+//                        }
+//
+//                        override fun onComplete(path: String?) {
+//                            path?.let {
+//                                XLogger.d("拍照 完成:${path}")
+//                                refreshGallery2(this@CameraDemoFragment.requireContext(), path)
+//                            }
+//                        }
+//                    })
+                        val bit = mViewBinding.imageView.capture()
+                        bitmap= bit
 
-                    (getCurrentCamera() as? CameraUVC)?.captureImage(object : ICaptureCallBack {
-                        override fun onBegin() {
-                            XLogger.e("拍照 开始---- }")
-                        }
 
-                        override fun onError(error: String?) {
-                            XLogger.e("拍照 错误----》${error}")
-                        }
 
-                        override fun onComplete(path: String?) {
-                            path?.let {
-                                XLogger.d("拍照 完成:${path}")
-                                refreshGallery2(this@CameraDemoFragment.requireContext(), path)
-                            }
-                        }
-                    })
+                    }) {
+                    Text("拍照")
+                }
 
-                }) {
-                Text("拍照")
+                if (bitmap != null) {
+                    Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = null,
+                        modifier = Modifier.widthIn(
+                        max=100.dp
+                    ),
+                        contentScale = ContentScale.FillWidth
+                    )
+                }
             }
 
+            RecordButton()
+        }
+    }
 
-            Button(onClick = {
+    private fun createFolder() {
+        val folder =
+            File(requireContext().getExternalFilesDir(Environment.DIRECTORY_DCIM)!!.path + "/.media")
+
+        if (!folder.exists()) folder.mkdirs()
+    }
+    private fun createFile(ext: String = ".jpg"): File {
+        return File(
+            requireContext().getExternalFilesDir(Environment.DIRECTORY_DCIM)!!.path
+                    + "/.media" + "/"
+                    + System.currentTimeMillis()
+                    + ext
+        )
+    }
+
+    @Composable
+    fun RecordButton() {
+        val scope = rememberCoroutineScope()
+
+        Button(onClick = {
 //                (getCurrentCamera() as? CameraUVC)?.captureVideoStart(object : ICaptureCallBack {
 //                    override fun onBegin() {
 //
@@ -602,50 +649,38 @@ open class CameraDemoFragment : CameraFragment() {
 //
 //                    }
 //                }, path = "")
+            scope.launch(Dispatchers.IO) {
+//                createFolder()
+//                val file = createFile(".mp4")
 
-
-                val videoFile =File( requireContext().cacheDir,"${System.currentTimeMillis()}.mp4")
+                val videoFile = File(requireContext().cacheDir, "${System.currentTimeMillis()}.mp4")
                 videoFile.createNewFile()
+                gpuImageMovieWriter.apply {
+                    drawVideo = true
+                    prepareRecording(
+                        videoFile.absolutePath,
+                        mViewBinding.imageView.measuredWidth,
+                        mViewBinding.imageView.measuredHeight
+                    )
+                    startRecording(object : GPUImageMovieWriter.StartRecordListener {
+                        override fun onRecordStart() {
+                            XLogger.d("录制-------->onRecordStart")
+                        }
 
-                gpuImageMovieWriter.gpuImageErrorListener = object :
-                    GPUImageMovieWriter.GPUImageErrorListener {
-                    override fun onError() {
-                        XLogger.e("录制错误")
-                    }
-
+                        override fun onRecordError(e: Exception?) {
+                            XLogger.d("录制-------->onRecordError:${e?.message}")
+                        }
+                    })
                 }
-
-                gpuImageMovieWriter.drawVideo = true
-                gpuImageMovieWriter.prepareRecording(
-                    videoFile.absolutePath  ,
-                mViewBinding.imageView.measuredWidth,
-                mViewBinding.imageView.measuredHeight
-                )
-                XLogger.d("开始录制")
-//
-
-                gpuImageMovieWriter.startRecording(object :GPUImageMovieWriter.StartRecordListener{
-                    override fun onRecordStart() {
-                        XLogger.d("开始录制")
-                    }
-
-                    override fun onRecordError(e: Exception?) {
-                        XLogger.d("开始错误；${e?.message}")
-                    }
-                })
-            }) {
-                Text("录像")
             }
+        }) {
+            Text("录像")
+        }
 
-            Button(onClick = {
-                gpuImageMovieWriter.stopRecording(object :MediaEncoder.RecordListener{
-                    override fun onStop() {
-                        XLogger.d("暂停了")
-                    }
-                })
-            }) {
-                Text("暂停")
-            }
+        Button(onClick = {
+            gpuImageMovieWriter.stopRecording { XLogger.d("暂停了") }
+        }) {
+            Text("暂停")
         }
     }
 
@@ -809,8 +844,6 @@ open class CameraDemoFragment : CameraFragment() {
                         }
                     })
 
-
-
                     addPreviewDataCallBack(object : IPreviewDataCallBack {
                         override fun onPreviewData(
                             data: ByteArray?,
@@ -818,31 +851,23 @@ open class CameraDemoFragment : CameraFragment() {
                             height: Int,
                             format: IPreviewDataCallBack.DataFormat
                         ) {
-//                            XLogger.d("新的数据来了------->${format} width:${width} height:${height}")
-//                            return
+//                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             data?.let {
+                                mViewBinding.imageView.updatePreviewFrame(data,width,height)
+                                return@let
                                 val scale = 0.5f
                                 val newWidth = (width * scale).toInt()
                                 val newHeight = (height * scale).toInt()
                                 val newData = cropNV21(
                                     data = data,
-                                    cropX = (width * 0.25f).toInt(),
-                                    cropY = (height * 0.25f).toInt(),
+                                    cropX = (width * (1 - scale) / 2f).toInt(),
+                                    cropY = (height * (1 - scale) / 2f).toInt(),
                                     width = width,
                                     height = height,
                                     cropWidth = newWidth,
                                     cropHeight = newHeight
                                 )
-                                val bitmap = nv21ToBitmap(newData, newWidth, newHeight)
-                                bitmap?.let {
-                                    lifecycleScope.launch(Dispatchers.Main) {
-//                                        whitebalance.setTemperature((2000..8000).random().toFloat())
-//                                        mViewBinding.imageView.setImageBitmap(it)
-//                                        mViewBinding.imageView.setRenderMode(RENDERMODE_WHEN_DIRTY)
-                                        mViewBinding.imageView.setImage(it)
-                                    }
-                                }
-                                //RGBA
+                                mViewBinding.imageView.updatePreviewFrame(newData,newWidth,newHeight)
                             }
                         }
                     })

@@ -158,7 +158,7 @@ class RenderManager(
                 }
             }
             MSG_GL_DRAW -> {
-                Log.d("TAG","Draw------------>")
+//                Log.d("TAG","Draw------------>")
                 //Render camera data to SurfaceTexture
                 //Set the correction matrix of the image at the same time
 

@@ -28,6 +28,8 @@ import android.media.MediaFormat;
 import android.util.Log;
 
 
+import com.jiangdg.utils.XLogger;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -182,7 +184,7 @@ public abstract class MediaEncoder implements Runnable {
                 }
             }
         } // end of while
-        com.jiangdg.utils.XLogger.d("Encoder thread exiting");
+        XLogger.d("Encoder thread exiting");
         synchronized (mSync) {
             mRequestStop = true;
             mIsCapturing = false;
@@ -197,7 +199,7 @@ public abstract class MediaEncoder implements Runnable {
    /*package*/ abstract void prepare() throws IOException;
 
     /*package*/ void startRecording() {
-        com.jiangdg.utils.XLogger.d("start Recording");
+       XLogger.d("start Recording");
         synchronized (mSync) {
             mIsCapturing = true;
             mRequestStop = false;
@@ -205,16 +207,12 @@ public abstract class MediaEncoder implements Runnable {
         }
     }
 
-    public interface RecordListener {
-        void onStop();
-    }
-
     public RecordListener recordListener;
     /**
      * the method to request stop encoding
      */
     public void stopRecording(RecordListener recordListener) {
-        com.jiangdg.utils.XLogger.d("stop Recording");
+        XLogger.d("录制 stop Recording");
         synchronized (mSync) {
             if (!mIsCapturing || mRequestStop) {
                 return;
@@ -222,6 +220,7 @@ public abstract class MediaEncoder implements Runnable {
             this.recordListener = recordListener;
             mRequestStop = true;    // for rejecting newer frame
             mSync.notifyAll();
+            XLogger.d("录制 stop---");
             // We can not know when the encoding and writing finish.
             // so we return immediately after request to avoid delay of caller thread
         }
@@ -233,11 +232,11 @@ public abstract class MediaEncoder implements Runnable {
      * Release all releated objects
      */
     protected void release() {
-        if (DEBUG) Log.d(TAG, "release:");
+        XLogger.d("release:");
         try {
             mListener.onStopped(this);
         } catch (final Exception e) {
-            Log.e(TAG, "failed onStopped", e);
+            XLogger.d("failed onStopped"+e.getMessage());
         }
         mIsCapturing = false;
         if (mMediaCodec != null) {
@@ -247,7 +246,7 @@ public abstract class MediaEncoder implements Runnable {
                 mMediaCodec = null;
             } catch (final Exception e) {
 
-                Log.e(TAG, "failed releasing MediaCodec", e);
+                XLogger.d("failed releasing MediaCodec"+ e.getMessage());
             }
         }
         if (mMuxerStarted) {
@@ -259,7 +258,7 @@ public abstract class MediaEncoder implements Runnable {
                     }
                 } catch (final Exception e) {
 
-                    Log.e(TAG, "failed stopping muxer", e);
+                    XLogger.d("failed stopping muxer"+ e.getMessage());
                 }
             }
         }
@@ -271,7 +270,7 @@ public abstract class MediaEncoder implements Runnable {
     }
 
     protected void signalEndOfInputStream() {
-        if (DEBUG) Log.d(TAG, "sending EOS to encoder");
+        XLogger.d( "sending EOS to encoder");
         // signalEndOfInputStream is only avairable for video encoding with surface
         // and equivalent sending a empty buffer with BUFFER_FLAG_END_OF_STREAM flag.
 //        mMediaCodec.signalEndOfInputStream();    // API >= 18
@@ -299,7 +298,7 @@ public abstract class MediaEncoder implements Runnable {
                 if (length <= 0) {
                     // send EOS
                     mIsEOS = true;
-                    if (DEBUG) Log.i(TAG, "send BUFFER_FLAG_END_OF_STREAM");
+                   XLogger.d("send BUFFER_FLAG_END_OF_STREAM");
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
                             presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     break;
@@ -325,7 +324,7 @@ public abstract class MediaEncoder implements Runnable {
         try {
             encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         } catch (IllegalStateException e) {
-            Log.e(TAG, " mMediaCodec.getOutputBuffers() error");
+            XLogger.d(" mMediaCodec.getOutputBuffers() error");
             return;
         }
 
@@ -333,7 +332,7 @@ public abstract class MediaEncoder implements Runnable {
         final MediaMuxerWrapper muxer = mMuxer;
         if (muxer == null) {
 //            throw new NullPointerException("muxer is unexpectedly null");
-            Log.w(TAG, "muxer is unexpectedly null");
+            XLogger.d("muxer is unexpectedly null");
             return;
         }
         LOOP:    while (mIsCapturing) {
@@ -350,11 +349,11 @@ public abstract class MediaEncoder implements Runnable {
                         break LOOP;        // out of while
                 }
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                if (DEBUG) Log.v(TAG, "INFO_OUTPUT_BUFFERS_CHANGED");
+                XLogger.d("INFO_OUTPUT_BUFFERS_CHANGED");
                 // this shoud not come when encoding
                 encoderOutputBuffers = mMediaCodec.getOutputBuffers();
             } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                if (DEBUG) Log.v(TAG, "INFO_OUTPUT_FORMAT_CHANGED");
+                XLogger.d("INFO_OUTPUT_FORMAT_CHANGED");
                 // this status indicate the output format of codec is changed
                 // this should come only once before actual encoded data
                 // but this status never come on Android4.3 or less
@@ -380,7 +379,7 @@ public abstract class MediaEncoder implements Runnable {
                 }
             } else if (encoderStatus < 0) {
                 // unexpected status
-                if (DEBUG) Log.w(TAG, "drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
+                XLogger.d("drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
             } else {
                 final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
                 if (encodedData == null) {
@@ -392,7 +391,7 @@ public abstract class MediaEncoder implements Runnable {
                     // but MediaCodec#getOutputFormat can not call here(because INFO_OUTPUT_FORMAT_CHANGED don't come yet)
                     // therefor we should expand and prepare output format from buffer data.
                     // This sample is for API>=18(>=Android 4.3), just ignore this flag here
-                    if (DEBUG) Log.d(TAG, "drain:BUFFER_FLAG_CODEC_CONFIG");
+                    XLogger.d("drain:BUFFER_FLAG_CODEC_CONFIG");
                     mBufferInfo.size = 0;
                 }
 

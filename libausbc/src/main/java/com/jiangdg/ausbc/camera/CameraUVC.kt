@@ -53,7 +53,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
 
     private val frameCallBack = IFrameCallback { frame ->
         frame?.apply {
-            frame.position(0)
+            position(0)
             val data = ByteArray(capacity())
             get(data)
             mCameraRequest?.apply {
