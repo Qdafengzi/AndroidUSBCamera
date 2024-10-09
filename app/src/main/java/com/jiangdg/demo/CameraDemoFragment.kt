@@ -373,7 +373,7 @@ open class CameraDemoFragment : CameraFragment() {
         mViewBinding.imageView.setDrawVideoListener {
             gpuImageMovieWriter.drawVideo = true
         }
-        gpuImageMovieWriter.setFrameRate(15)
+        gpuImageMovieWriter.setFrameRate(30)
 
 //        gpuImageMovieWriter.gpuImageErrorListener = GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
 
@@ -837,7 +837,7 @@ open class CameraDemoFragment : CameraFragment() {
                         mViewBinding.imageView.measuredWidth,
                         mViewBinding.imageView.measuredHeight
                     )
-                    delay(200)
+//                    delay(200)
                     startRecording(object : GPUImageMovieWriter.StartRecordListener {
                         override fun onRecordStart() {
                             XLogger.d("录制-------->onRecordStart")
@@ -973,7 +973,7 @@ open class CameraDemoFragment : CameraFragment() {
 //                    setContrast()
 //                    setHue()
 
-                    val previewSize = getSuitableSize(1400, 1400)
+                    val previewSize = getSuitableSize(3840, 2160)
                     XLogger.d("获取最佳的预览尺寸：${previewSize.width} * ${previewSize.height}")
                     val isSupport = isPreviewSizeSupported(previewSize)
                     XLogger.d("是否支持：${isSupport}")

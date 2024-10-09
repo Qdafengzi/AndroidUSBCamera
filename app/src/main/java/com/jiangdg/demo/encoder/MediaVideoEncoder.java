@@ -31,7 +31,6 @@ import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
-import androidx.annotation.NonNull;
 
 import com.jiangdg.utils.XLogger;
 
@@ -42,10 +41,10 @@ public class MediaVideoEncoder extends MediaEncoder {
     private static final boolean DEBUG = false;
     private static final String TAG = "MediaVideoEncoder";
 
-    private static final String MIME_TYPE = "video/avc";
+//    private static final String MIME_TYPE = "video/avc";
 
     // parameters for recording
-    private int frameRate;
+    private int frameRate  = 30;
     private static final float BPP = 0.15f;
     private static final float BPP_HIGH = 0.4f;
     //private static final float BPP_LOW = 0.15f;
@@ -102,36 +101,36 @@ public class MediaVideoEncoder extends MediaEncoder {
         mTrackIndex = -1;
         mMuxerStarted = mIsEOS = false;
 
-        final MediaCodecInfo videoCodecInfo = selectVideoCodec(MIME_TYPE);
+        final MediaCodecInfo videoCodecInfo = selectVideoCodec(MediaFormat.MIMETYPE_VIDEO_AVC);
         if (videoCodecInfo == null) {
-            XLogger.e("Unable to find an appropriate codec for " + MIME_TYPE);
+            XLogger.e("Unable to find an appropriate codec for " + MediaFormat.MIMETYPE_VIDEO_AVC);
 
             return;
         }
-        XLogger.d("录制 selected codec:"+  videoCodecInfo.getName());
+        XLogger.d("selected codec:"+  videoCodecInfo.getName());
 
-        final MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, mWidth, mHeight);
+        XLogger.d("MediaCodec " + mWidth + " " + mHeight);
+        MediaFormat format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, mWidth, mHeight);
         format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);    // API >= 18
         format.setInteger(MediaFormat.KEY_BIT_RATE, calcBitRate());
         format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
         format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-        XLogger.d("录制配置 format:"+ format);
+        XLogger.d("format:"+ format);
 
-        mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
+        mMediaCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
         mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
         // get Surface for encoder input
         // this method only can call between #configure and #start
         mSurface = mMediaCodec.createInputSurface();    // API >= 18
         mMediaCodec.start();
+
         XLogger.d("prepare finishing start...");
         if (mListener != null) {
             try {
                 mListener.onPrepared(this);
-            } catch (final Exception e) {
+            } catch (Exception e) {
                 XLogger.e("prepare error:"+e.getMessage());
             }
-        }else {
-            XLogger.e("mListener=null");
         }
     }
 
@@ -173,12 +172,14 @@ public class MediaVideoEncoder extends MediaEncoder {
      * @param mimeType
      * @return null if no codec matched
      */
-    protected  MediaCodecInfo selectVideoCodec(final String mimeType) {
-        XLogger.d("selectVideoCodec:");
+    protected MediaCodecInfo selectVideoCodec(final String mimeType) {
+        if (DEBUG) Log.v(TAG, "selectVideoCodec:");
+
         // get the list of available codecs
-        MediaCodecList codecList = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
-        MediaCodecInfo[] codecInfos = codecList.getCodecInfos();
-        for (MediaCodecInfo codecInfo : codecInfos) {
+        final int numCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < numCodecs; i++) {
+            final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+
             if (!codecInfo.isEncoder()) {    // skipp decoder
                 continue;
             }
@@ -186,7 +187,7 @@ public class MediaVideoEncoder extends MediaEncoder {
             final String[] types = codecInfo.getSupportedTypes();
             for (String type : types) {
                 if (type.equalsIgnoreCase(mimeType)) {
-                    XLogger.d("codec:" + codecInfo.getName() + ",MIME=" + type);
+                    if (DEBUG) Log.i(TAG, "codec:" + codecInfo.getName() + ",MIME=" + type);
                     final int format = selectColorFormat(codecInfo, mimeType);
                     if (format > 0) {
                         return codecInfo;
@@ -194,25 +195,6 @@ public class MediaVideoEncoder extends MediaEncoder {
                 }
             }
         }
-//        final int numCodecs = MediaCodecList.getCodecCount();
-//        for (int i = 0; i < numCodecs; i++) {
-//            final MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-//
-//            if (!codecInfo.isEncoder()) {    // skipp decoder
-//                continue;
-//            }
-//            // select first codec that match a specific MIME type and color format
-//            final String[] types = codecInfo.getSupportedTypes();
-//            for (String type : types) {
-//                if (type.equalsIgnoreCase(mimeType)) {
-//                    XLogger.d("codec:" + codecInfo.getName() + ",MIME=" + type);
-//                    final int format = selectColorFormat(codecInfo, mimeType);
-//                    if (format > 0) {
-//                        return codecInfo;
-//                    }
-//                }
-//            }
-//        }
         return null;
     }
 
@@ -222,7 +204,7 @@ public class MediaVideoEncoder extends MediaEncoder {
      * @return 0 if no colorFormat is matched
      */
     protected int selectColorFormat(final MediaCodecInfo codecInfo, final String mimeType) {
-        XLogger.d("selectColorFormat");
+        if (DEBUG) Log.i(TAG, "selectColorFormat: ");
         int result = 0;
         final MediaCodecInfo.CodecCapabilities caps;
         try {
@@ -241,7 +223,7 @@ public class MediaVideoEncoder extends MediaEncoder {
             }
         }
         if (result == 0)
-            XLogger.d("couldn't find a good color format for " + codecInfo.getName() + " / " + mimeType);
+            Log.e(TAG, "couldn't find a good color format for " + codecInfo.getName() + " / " + mimeType);
         return result;
     }
 
@@ -260,8 +242,8 @@ public class MediaVideoEncoder extends MediaEncoder {
         };
     }
 
-    private static boolean isRecognizedViewoFormat(final int colorFormat) {
-        XLogger.d( "isRecognizedViewoFormat:colorFormat=" + colorFormat);
+    private boolean isRecognizedViewoFormat(int colorFormat) {
+        if (DEBUG) Log.i(TAG, "isRecognizedViewoFormat:colorFormat=" + colorFormat);
         final int n = recognizedFormats != null ? recognizedFormats.length : 0;
         for (int i = 0; i < n; i++) {
             if (recognizedFormats[i] == colorFormat) {
@@ -273,12 +255,12 @@ public class MediaVideoEncoder extends MediaEncoder {
 
     @Override
     protected void signalEndOfInputStream() {
-        XLogger.d("sending EOS to encoder");
+        if (DEBUG) Log.d(TAG, "sending EOS to encoder");
         if (mMediaCodec != null) {
             try {
                 mMediaCodec.signalEndOfInputStream();    // API >= 18
             } catch (IllegalStateException e) {
-                XLogger.e(" "+e.getMessage());
+
             }
         }
         mIsEOS = true;

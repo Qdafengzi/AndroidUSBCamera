@@ -16,7 +16,6 @@
 
 package com.jiangdg.demo.encoder;
 
-import android.annotation.TargetApi;
 import android.graphics.SurfaceTexture;
 import android.opengl.EGL14;
 import android.opengl.EGLConfig;
@@ -24,8 +23,9 @@ import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
-import android.util.Log;
 import android.view.Surface;
+
+import com.jiangdg.utils.XLogger;
 
 
 /**
@@ -33,10 +33,7 @@ import android.view.Surface;
  * <p>
  * The EGLContext must only be attached to one thread at a time.  This class is not thread-safe.
  */
-@TargetApi(18)
 public final class EglCore {
-    private static final String TAG = "EglCore";
-
     /**
      * Constructor flag: surface must be recordable.  This discourages EGL from using a
      * pixel format that cannot be converted efficiently to something usable by the video
@@ -135,7 +132,7 @@ public final class EglCore {
         int[] values = new int[1];
         EGL14.eglQueryContext(mEGLDisplay, mEGLContext, EGL14.EGL_CONTEXT_CLIENT_VERSION,
                 values, 0);
-        Log.d(TAG, "EGLContext created, client version " + values[0]);
+        XLogger.d("EGLContext created, client version " + values[0]);
     }
 
     /**
@@ -172,7 +169,7 @@ public final class EglCore {
         int[] numConfigs = new int[1];
         if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, configs, 0, configs.length,
                 numConfigs, 0)) {
-            Log.w(TAG, "unable to find RGB8888 / " + version + " EGLConfig");
+            XLogger.w( "unable to find RGB8888 / " + version + " EGLConfig");
             return null;
         }
         return configs[0];
@@ -188,8 +185,7 @@ public final class EglCore {
         if (mEGLDisplay != EGL14.EGL_NO_DISPLAY) {
             // Android is unusual in that it uses a reference-counted EGLDisplay.  So for
             // every eglInitialize() we need an eglTerminate().
-            EGL14.eglMakeCurrent(mEGLDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE,
-                    EGL14.EGL_NO_CONTEXT);
+            EGL14.eglMakeCurrent(mEGLDisplay, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT);
             EGL14.eglDestroyContext(mEGLDisplay, mEGLContext);
             EGL14.eglReleaseThread();
             EGL14.eglTerminate(mEGLDisplay);
@@ -208,7 +204,7 @@ public final class EglCore {
                 // the EGL state, so if a surface or context is still current on another
                 // thread we can't fully release it here.  Exceptions thrown from here
                 // are quietly discarded.  Complain in the log file.
-                Log.w(TAG, "WARNING: EglCore was not explicitly released -- state may be leaked");
+               XLogger.w("WARNING: EglCore was not explicitly released -- state may be leaked");
                 release();
             }
         } finally {
@@ -271,7 +267,7 @@ public final class EglCore {
     public void makeCurrent(EGLSurface eglSurface) {
         if (mEGLDisplay == EGL14.EGL_NO_DISPLAY) {
             // called makeCurrent() before create?
-            Log.d(TAG, "NOTE: makeCurrent w/o display");
+            XLogger.d("NOTE: makeCurrent w/o display");
         }
         if (!EGL14.eglMakeCurrent(mEGLDisplay, eglSurface, eglSurface, mEGLContext)) {
             int error = EGL14.eglGetError();
@@ -285,7 +281,7 @@ public final class EglCore {
     public void makeCurrent(EGLSurface drawSurface, EGLSurface readSurface) {
         if (mEGLDisplay == EGL14.EGL_NO_DISPLAY) {
             // called makeCurrent() before create?
-            Log.d(TAG, "NOTE: makeCurrent w/o display");
+            XLogger.d( "NOTE: makeCurrent w/o display");
         }
         if (!EGL14.eglMakeCurrent(mEGLDisplay, drawSurface, readSurface, mEGLContext)) {
             throw new RuntimeException("eglMakeCurrent(draw,read) failed");
@@ -360,7 +356,7 @@ public final class EglCore {
         display = EGL14.eglGetCurrentDisplay();
         context = EGL14.eglGetCurrentContext();
         surface = EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW);
-        Log.i(TAG, "Current EGL (" + msg + "): display=" + display + ", context=" + context +
+        XLogger.i("Current EGL (" + msg + "): display=" + display + ", context=" + context +
                 ", surface=" + surface);
     }
 
@@ -370,7 +366,7 @@ public final class EglCore {
     private void checkEglError(String msg) {
         int error;
         if ((error = EGL14.eglGetError()) != EGL14.EGL_SUCCESS) {
-           //todo:
+            XLogger.e("错误------》error:"+error);
         }
     }
 }

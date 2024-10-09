@@ -22,18 +22,14 @@ package com.jiangdg.demo.encoder;
  * All files in the folder are under this Apache License, Version 2.0.
 */
 
-import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
-import android.util.Log;
-
 
 import com.jiangdg.utils.XLogger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-@TargetApi(18)
 public abstract class MediaEncoder implements Runnable {
     private static final boolean DEBUG = false;
     private static final String TAG = "MediaEncoder";
@@ -104,7 +100,6 @@ public abstract class MediaEncoder implements Runnable {
             try {
                 mSync.wait();
             } catch (final InterruptedException e) {
-                com.jiangdg.utils.XLogger.d("error:"+e.getMessage());
             }
         }
     }
@@ -156,6 +151,7 @@ public abstract class MediaEncoder implements Runnable {
             }
 
             if (mInputError) {
+                XLogger.d("录制暂停-----》");
                 inputError();
                 release();
                 break;
@@ -179,6 +175,7 @@ public abstract class MediaEncoder implements Runnable {
                     try {
                         mSync.wait();
                     } catch (final InterruptedException e) {
+                        XLogger.d("录制暂停  打断");
                         break;
                     }
                 }
@@ -199,7 +196,7 @@ public abstract class MediaEncoder implements Runnable {
    /*package*/ abstract void prepare() throws IOException;
 
     /*package*/ void startRecording() {
-       XLogger.d("start Recording");
+        XLogger.d("start Recording");
         synchronized (mSync) {
             mIsCapturing = true;
             mRequestStop = false;
@@ -207,20 +204,20 @@ public abstract class MediaEncoder implements Runnable {
         }
     }
 
-    public RecordListener recordListener;
+    private RecordListener recordListener;
     /**
      * the method to request stop encoding
      */
-    public void stopRecording(RecordListener recordListener) {
-        XLogger.d("录制 stop Recording");
+    /*package*/ void stopRecording(RecordListener recordListener) {
+        XLogger.d("stop Recording");
         synchronized (mSync) {
             if (!mIsCapturing || mRequestStop) {
                 return;
             }
+            XLogger.d("录制--------》 zanting");
             this.recordListener = recordListener;
             mRequestStop = true;    // for rejecting newer frame
             mSync.notifyAll();
-            XLogger.d("录制 stop---");
             // We can not know when the encoding and writing finish.
             // so we return immediately after request to avoid delay of caller thread
         }
@@ -235,18 +232,18 @@ public abstract class MediaEncoder implements Runnable {
         XLogger.d("release:");
         try {
             mListener.onStopped(this);
-        } catch (final Exception e) {
-            XLogger.d("failed onStopped"+e.getMessage());
+        } catch (Exception e) {
+          XLogger.e("failed onStopped"+ e.getMessage());
         }
         mIsCapturing = false;
         if (mMediaCodec != null) {
             try {
+                XLogger.d("录制--------》 暂停");
                 mMediaCodec.stop();
                 mMediaCodec.release();
                 mMediaCodec = null;
-            } catch (final Exception e) {
-
-                XLogger.d("failed releasing MediaCodec"+ e.getMessage());
+            } catch (Exception e) {
+                XLogger.e("failed releasing MediaCodec"+ e.getMessage());
             }
         }
         if (mMuxerStarted) {
@@ -256,9 +253,9 @@ public abstract class MediaEncoder implements Runnable {
                     if (muxer.stop()) {
                         mListener.onMuxerStopped();
                     }
-                } catch (final Exception e) {
+                } catch (Exception e) {
 
-                    XLogger.d("failed stopping muxer"+ e.getMessage());
+                    XLogger.e("failed stopping muxer"+e.getMessage());
                 }
             }
         }
@@ -292,22 +289,25 @@ public abstract class MediaEncoder implements Runnable {
                 final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
                 inputBuffer.clear();
                 if (buffer != null) {
+                    XLogger.d("录制------>put(buffer)");
                     inputBuffer.put(buffer);
                 }
 //                if (DEBUG) Log.v(TAG, "encode:queueInputBuffer");
                 if (length <= 0) {
                     // send EOS
                     mIsEOS = true;
-                   XLogger.d("send BUFFER_FLAG_END_OF_STREAM");
+                  XLogger.d( "录制 send BUFFER_FLAG_END_OF_STREAM");
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
                             presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     break;
                 } else {
+                    XLogger.d( "录制 length 》=0");
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, length,
                             presentationTimeUs, 0);
                 }
                 break;
             } else if (inputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                XLogger.d("录制------>INFO_TRY_AGAIN_LATER");
                 // wait for MediaCodec encoder is ready to encode
                 // nothing to do here because MediaCodec#dequeueInputBuffer(TIMEOUT_USEC)
                 // will wait for maximum TIMEOUT_USEC(10msec) on each call
@@ -319,163 +319,77 @@ public abstract class MediaEncoder implements Runnable {
      * drain encoded data and write them to muxer
      */
     protected void drain() {
-        XLogger.d("drain--------->");
         if (mMediaCodec == null) return;
-
-        final MediaMuxerWrapper muxer = mMuxer;
-        if (muxer == null) {
-            XLogger.e("muxer is unexpectedly null");
-            return;
-        }
-
-        int encoderStatus, count = 0;
-        LOOP: while (mIsCapturing) {
-            try {
-                encoderStatus = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
-            } catch (IllegalStateException e) {
-                XLogger.e("dequeueOutputBuffer error"+ e.getMessage());
-                encoderStatus = MediaCodec.INFO_TRY_AGAIN_LATER;
-            }
-
-            if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                if (!mIsEOS && ++count > 5) {
-                    break LOOP; // Break if too many retries
-                }
-            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                XLogger.d("INFO_OUTPUT_FORMAT_CHANGED");
-                if (mMuxerStarted) {
-                    throw new RuntimeException("format changed twice");
-                }
-
-                final MediaFormat format = mMediaCodec.getOutputFormat();
-                mTrackIndex = muxer.addTrack(format);
-                XLogger.d("录制配置" + "Muxer Format: " + format.toString() + " " + mTrackIndex);
-                mMuxerStarted = true;
-
-                synchronized (muxer) {
-                    while (!muxer.isStarted()) {
-                        try {
-                            muxer.wait(100);
-                        } catch (InterruptedException e) {
-                            break LOOP;
-                        }
-                    }
-                }
-            } else if (encoderStatus < 0) {
-                XLogger.d("unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
-            } else {
-                ByteBuffer encodedData = mMediaCodec.getOutputBuffer(encoderStatus);
-                if (encodedData == null) {
-                    throw new RuntimeException("encoderOutputBuffer " + encoderStatus + " was null");
-                }
-
-                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    XLogger.d("drain:BUFFER_FLAG_CODEC_CONFIG");
-                    mBufferInfo.size = 0;
-                }
-
-                if (mBufferInfo.size != 0) {
-                    count = 0;
-                    if (!mMuxerStarted) {
-                        throw new RuntimeException("drain:muxer hasn't started");
-                    }
-                    mBufferInfo.presentationTimeUs = getPTSUs();
-                    muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
-                    prevOutputPTSUs = mBufferInfo.presentationTimeUs;
-                }
-
-                mMediaCodec.releaseOutputBuffer(encoderStatus, false);
-                if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    mIsCapturing = false;
-                    break; // Break on EOS
-                }
-            }
-        }
-    }
-
-
-    protected void drain1() {
-        XLogger.d("drain--------->");
-        if (mMediaCodec == null) return;
-
-
-
-
-
         ByteBuffer[] encoderOutputBuffers = null;
         try {
             encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         } catch (IllegalStateException e) {
-            XLogger.e(" mMediaCodec.getOutputBuffers() error:");
-            e.printStackTrace();
+
+          XLogger.e(" mMediaCodec.getOutputBuffers() error"+e.getMessage());
             return;
         }
 
-        int encoderStatus, count = 0;
+        int outputBufferIndex, count = 0;
         final MediaMuxerWrapper muxer = mMuxer;
         if (muxer == null) {
 //            throw new NullPointerException("muxer is unexpectedly null");
-            XLogger.e("muxer is unexpectedly null");
+            XLogger.e( "muxer is unexpectedly null");
             return;
         }
-        LOOP:    while (mIsCapturing) {
-            // get encoded data with maximum timeout duration of TIMEOUT_USEC(=10[msec])
+        LOOP: while (mIsCapturing) {
             try {
-                encoderStatus = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
+                XLogger.d("录制进度---------》1");
+                outputBufferIndex = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
             } catch (IllegalStateException e) {
-                encoderStatus = MediaCodec.INFO_TRY_AGAIN_LATER;
+                XLogger.d("录制进度---------》2");
+                outputBufferIndex = MediaCodec.INFO_TRY_AGAIN_LATER;
             }
-            if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+            if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                XLogger.d("录制进度---------》3");
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {
+                XLogger.d("录制进度---------》4");
                     if (++count > 5)
                         break LOOP;        // out of while
                 }
-            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                XLogger.d("INFO_OUTPUT_BUFFERS_CHANGED");
+            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                XLogger.d("录制进度---------》5");
+                XLogger.v( "INFO_OUTPUT_BUFFERS_CHANGED");
                 // this shoud not come when encoding
                 encoderOutputBuffers = mMediaCodec.getOutputBuffers();
-            } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                XLogger.d("INFO_OUTPUT_FORMAT_CHANGED");
-                // this status indicate the output format of codec is changed
-                // this should come only once before actual encoded data
-                // but this status never come on Android4.3 or less
-                // and in that case, you should treat when MediaCodec.BUFFER_FLAG_CODEC_CONFIG come.
+            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                XLogger.d("录制进度---------》6");
+                XLogger.v( "INFO_OUTPUT_FORMAT_CHANGED");
                 if (mMuxerStarted) {    // second time request is error
                     throw new RuntimeException("format changed twice");
                 }
-                // get output format from codec and pass them to muxer
-                // getOutputFormat should be called after INFO_OUTPUT_FORMAT_CHANGED otherwise crash.
                 final MediaFormat format = mMediaCodec.getOutputFormat(); // API >= 16
-
                 mTrackIndex = muxer.addTrack(format);
-                XLogger.d("录制配置"+ "Muxer Format: " + format.toString() +"  "+mTrackIndex);
                 mMuxerStarted = true;
                 if (!muxer.start()) {
                     // we should wait until muxer is ready
                     synchronized (muxer) {
                         while (!muxer.isStarted())
+                            XLogger.d("录制进度---------》7");
                             try {
                                 muxer.wait(100);
                             } catch (final InterruptedException e) {
+                                XLogger.e("错误----？"+e.getMessage());
                                 break LOOP;
                             }
                     }
                 }
-            } else if (encoderStatus < 0) {
+            } else if (outputBufferIndex < 0) {
+                XLogger.d("录制进度---------》7");
                 // unexpected status
-                XLogger.d("drain:unexpected result from encoder#dequeueOutputBuffer: " + encoderStatus);
+                XLogger.d( "drain:unexpected result from encoder#dequeueOutputBuffer: " + outputBufferIndex);
             } else {
-                final ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
+                XLogger.d("录制进度---------》8");
+                final ByteBuffer encodedData = encoderOutputBuffers[outputBufferIndex];
                 if (encodedData == null) {
-                    // this never should come...may be a MediaCodec internal error
-                    throw new RuntimeException("encoderOutputBuffer " + encoderStatus + " was null");
+                    throw new RuntimeException("encoderOutputBuffer " + outputBufferIndex + " was null");
                 }
                 if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                    // You shoud set output format to muxer here when you target Android4.3 or less
-                    // but MediaCodec#getOutputFormat can not call here(because INFO_OUTPUT_FORMAT_CHANGED don't come yet)
-                    // therefor we should expand and prepare output format from buffer data.
-                    // This sample is for API>=18(>=Android 4.3), just ignore this flag here
                     XLogger.d("drain:BUFFER_FLAG_CODEC_CONFIG");
                     mBufferInfo.size = 0;
                 }
@@ -487,21 +401,117 @@ public abstract class MediaEncoder implements Runnable {
                         // muxer is not ready...this will prrograming failure.
                         throw new RuntimeException("drain:muxer hasn't started");
                     }
-                    XLogger.d("写入");
+                    XLogger.d("录制进度---------》9");
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                     mBufferInfo.presentationTimeUs = getPTSUs();
                     muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
                     prevOutputPTSUs = mBufferInfo.presentationTimeUs;
                 }
                 // return buffer to encoder
-                mMediaCodec.releaseOutputBuffer(encoderStatus, false);
+                mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
                 if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                    XLogger.d("录制进度---------》10");
                     // when EOS come.
                     mIsCapturing = false;
                     break;      // out of while
                 }
             }
         }
+    }
+
+
+    protected void drain1() {
+        if (mMediaCodec == null || mMuxer == null) {
+            XLogger.e("MediaCodec or Muxer is null");
+            return;
+        }
+
+        final long TIMEOUT_USEC = 10000L; // 10ms
+        int mWaitCount = 0;
+        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+
+        while (mIsCapturing) {
+            int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC);
+
+            switch (outputBufferIndex) {
+                case MediaCodec.INFO_TRY_AGAIN_LATER:
+                    if (!mIsEOS && ++mWaitCount > 5) {
+                        XLogger.d("No output available yet, breaking loop");
+                        return;
+                    }
+                    break;
+
+                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                    handleOutputFormatChanged();
+                    break;
+
+                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                    XLogger.v("INFO_OUTPUT_BUFFERS_CHANGED");
+                    break;
+
+                default:
+                    if (outputBufferIndex >= 0) {
+                        handleEncodedData(outputBufferIndex, bufferInfo);
+                    } else {
+                        XLogger.d("Unexpected result from dequeueOutputBuffer: " + outputBufferIndex);
+                    }
+                    break;
+            }
+
+            if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                XLogger.d("End of stream reached");
+                mIsCapturing = false;
+            }
+        }
+    }
+
+    private void handleOutputFormatChanged() {
+        if (mMuxerStarted) {
+            throw new RuntimeException("Format changed twice");
+        }
+        MediaFormat newFormat = mMediaCodec.getOutputFormat();
+        mTrackIndex = mMuxer.addTrack(newFormat);
+        mMuxerStarted = true;
+        if (!mMuxer.start()) {
+            waitForMuxerStart();
+        }
+        XLogger.v("Output format changed, muxer started");
+    }
+
+    private void waitForMuxerStart() {
+        synchronized (mMuxer) {
+            while (!mMuxer.isStarted()) {
+                try {
+                    mMuxer.wait(100);
+                } catch (InterruptedException e) {
+                    XLogger.e("Interrupted while waiting for muxer to start: " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
+    }
+
+    private void handleEncodedData(int bufferIndex, MediaCodec.BufferInfo bufferInfo) {
+        ByteBuffer encodedData = mMediaCodec.getOutputBuffer(bufferIndex);
+        if (encodedData == null) {
+            throw new RuntimeException("EncoderOutputBuffer " + bufferIndex + " was null");
+        }
+
+        if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+            XLogger.d("Ignoring BUFFER_FLAG_CODEC_CONFIG");
+            bufferInfo.size = 0;
+        }
+
+        if (bufferInfo.size != 0 && mMuxerStarted) {
+            encodedData.position(bufferInfo.offset);
+            encodedData.limit(bufferInfo.offset + bufferInfo.size);
+            bufferInfo.presentationTimeUs = getPTSUs();
+            mMuxer.writeSampleData(mTrackIndex, encodedData, bufferInfo);
+            prevOutputPTSUs = bufferInfo.presentationTimeUs;
+        }
+
+        mMediaCodec.releaseOutputBuffer(bufferIndex, false);
     }
 
     /**
