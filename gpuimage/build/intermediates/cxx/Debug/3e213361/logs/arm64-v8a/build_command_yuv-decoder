@@ -1,0 +1,4 @@
+/Users/finnq/Library/Android/sdk/cmake/3.22.1/bin/ninja \
+  -C \
+  /Users/finnq/Documents/Demo/AndroidUSBCamera/gpuimage/.cxx/Debug/3e213361/arm64-v8a \
+  yuv-decoder

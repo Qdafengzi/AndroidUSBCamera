@@ -1,4 +1,0 @@
-/Users/finnq/Library/Android/sdk/cmake/3.22.1/bin/ninja \
-  -C \
-  /Users/finnq/Documents/Project/gem-lightbox-android/gpuimage/.cxx/RelWithDebInfo/6t6g5p2z/x86 \
-  yuv-decoder

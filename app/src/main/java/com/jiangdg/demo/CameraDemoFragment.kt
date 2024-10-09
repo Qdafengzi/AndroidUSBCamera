@@ -75,10 +75,12 @@ import com.jiangdg.demo.databinding.FragmentDemo01Binding
 import com.jiangdg.utils.ResUtils
 import com.jiangdg.utils.XLogger
 import jp.co.cyberagent.android.gpuimage.GPUImageView
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageLevelsFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageWhiteBalanceFilter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -358,17 +360,22 @@ open class CameraDemoFragment : CameraFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        val filterGroup = GPUImageFilterGroup()
-        val whiteBalanceFilter = GPUImageWhiteBalanceFilter()
-
-        filterGroup.addFilter(gpuImageMovieWriter)
-        filterGroup.addFilter(gPUImageLevelsFilter)
-        filterGroup.addFilter(whiteBalanceFilter)
-        mViewBinding.imageView.filter = filterGroup
-        gpuImageMovieWriter.setFrameRate(30)
         mViewBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_CONTINUOUSLY)
-        gpuImageMovieWriter.gpuImageErrorListener = GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
+        val gpuImageFilters = mutableListOf<GPUImageFilter>()
+
+        val whiteBalanceFilter = GPUImageWhiteBalanceFilter()
+        gpuImageFilters.add(gpuImageMovieWriter)
+        gpuImageFilters.add(gPUImageLevelsFilter)
+        gpuImageFilters.add(whiteBalanceFilter)
+
+
+        mViewBinding.imageView.filter = GPUImageFilterGroup(gpuImageFilters)
+        mViewBinding.imageView.setDrawVideoListener {
+            gpuImageMovieWriter.drawVideo = true
+        }
+        gpuImageMovieWriter.setFrameRate(15)
+
+//        gpuImageMovieWriter.gpuImageErrorListener = GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
 
         mViewBinding.compose.setContent {
             val scrollState = rememberScrollState()
@@ -818,7 +825,10 @@ open class CameraDemoFragment : CameraFragment() {
 //                    }
 //                }, path = "")
             scope.launch(Dispatchers.IO) {
-                val videoFile = File(requireContext().cacheDir, "${System.currentTimeMillis()}.mp4")
+                val videoFile = File(requireContext().cacheDir, "record.mp4")
+                if (videoFile.exists()) {
+                    videoFile.delete()
+                }
                 videoFile.createNewFile()
                 gpuImageMovieWriter.apply {
                     drawVideo = true
@@ -827,6 +837,7 @@ open class CameraDemoFragment : CameraFragment() {
                         mViewBinding.imageView.measuredWidth,
                         mViewBinding.imageView.measuredHeight
                     )
+                    delay(200)
                     startRecording(object : GPUImageMovieWriter.StartRecordListener {
                         override fun onRecordStart() {
                             XLogger.d("录制-------->onRecordStart")
@@ -843,7 +854,12 @@ open class CameraDemoFragment : CameraFragment() {
         }
 
         Button(onClick = {
-            gpuImageMovieWriter.stopRecording { XLogger.d("暂停了") }
+            scope.launch(Dispatchers.IO) {
+                gpuImageMovieWriter.stopRecording {
+                    XLogger.d("暂停了")
+                }
+            }
+
         }) {
             Text("暂停")
         }
@@ -957,12 +973,11 @@ open class CameraDemoFragment : CameraFragment() {
 //                    setContrast()
 //                    setHue()
 
-                    val previewSize = getSuitableSize(2160, 2160)
+                    val previewSize = getSuitableSize(1400, 1400)
                     XLogger.d("获取最佳的预览尺寸：${previewSize.width} * ${previewSize.height}")
                     val isSupport = isPreviewSizeSupported(previewSize)
                     XLogger.d("是否支持：${isSupport}")
                     val allPreviewSize = getAllPreviewSizes()
-                    gpuImageMovieWriter.setFrameRate(30)
 
                     allPreviewSize.forEach {
                         XLogger.d("各种分辨率：${it.width} * ${it.height}")
@@ -1017,13 +1032,14 @@ open class CameraDemoFragment : CameraFragment() {
                             height: Int,
                             format: IPreviewDataCallBack.DataFormat
                         ) {
-//                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
+                            //XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             data?.let {
                                 mLifecycleOwner.launch(Dispatchers.IO) {
                                     mViewBinding.imageView.updatePreviewFrame(data, width, height)
                                 }
 
                                 return@let
+
                                 val scale = 0.5f
                                 val newWidth = (width * scale).toInt()
                                 val newHeight = (height * scale).toInt()

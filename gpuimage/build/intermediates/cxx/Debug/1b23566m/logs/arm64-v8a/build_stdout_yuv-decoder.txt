@@ -1,0 +1,2 @@
+ninja: Entering directory `/Users/finnq/Documents/Demo/MyCameraX_1/gpuimage/.cxx/Debug/1b23566m/arm64-v8a'
+ninja: no work to do.

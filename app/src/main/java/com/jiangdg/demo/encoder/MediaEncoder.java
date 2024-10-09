@@ -487,6 +487,7 @@ public abstract class MediaEncoder implements Runnable {
                         // muxer is not ready...this will prrograming failure.
                         throw new RuntimeException("drain:muxer hasn't started");
                     }
+                    XLogger.d("写入");
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                     mBufferInfo.presentationTimeUs = getPTSUs();
                     muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
