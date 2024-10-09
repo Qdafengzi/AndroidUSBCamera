@@ -1,0 +1,2 @@
+ninja: Entering directory `/Users/finnq/Documents/Demo/AndroidUSBCamera/gpu/.cxx/Debug/1l324nt4/arm64-v8a'
+ninja: no work to do.

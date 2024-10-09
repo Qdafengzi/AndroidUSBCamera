@@ -119,28 +119,6 @@ public class MediaVideoEncoder extends MediaEncoder {
 
         mMediaCodec = MediaCodec.createEncoderByType(MIME_TYPE);
         mMediaCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-
-        mMediaCodec.setCallback(new MediaCodec.Callback() {
-            @Override
-            public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
-                XLogger.d("录制：onInputBufferAvailable");
-            }
-
-            @Override
-            public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
-                XLogger.d("录制：onOutputBufferAvailable");
-            }
-
-            @Override
-            public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
-            XLogger.d("录制错误："+e.getMessage());
-            }
-
-            @Override
-            public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
-                XLogger.d("录制：onOutputFormatChanged");
-            }
-        });
         // get Surface for encoder input
         // this method only can call between #configure and #start
         mSurface = mMediaCodec.createInputSurface();    // API >= 18

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/iv_selected_background"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:padding="1dp"
+        app:layout_constraintBottom_toBottomOf="@id/iv_scale"
+        app:layout_constraintEnd_toEndOf="@id/iv_scale"
+        app:layout_constraintStart_toStartOf="@id/iv_delete"
+        app:layout_constraintTop_toTopOf="@id/iv_delete"
+        app:shapeAppearanceOverlay="@style/waterMarkImageView"
+        app:strokeColor="@color/colorPrimary"
+        app:strokeWidth="2dp" />
+
+
+    <com.gemlightbox.core.logo.LogoImageView
+        android:id="@+id/iv_logo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <ImageView
+        android:id="@+id/iv_delete"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/icon_remove_logo"
+        app:layout_constraintBottom_toTopOf="@id/iv_logo"
+        app:layout_constraintEnd_toStartOf="@id/iv_logo" />
+
+    <ImageView
+        android:id="@+id/iv_rotate"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_rotate_logo"
+        app:layout_constraintEnd_toStartOf="@id/iv_logo"
+        app:layout_constraintTop_toBottomOf="@id/iv_logo" />
+
+    <ImageView
+        android:id="@+id/iv_select_position"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_select_default_position"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/iv_logo"
+        app:layout_constraintStart_toEndOf="@id/iv_logo" />
+
+    <ImageView
+        android:id="@+id/iv_scale"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/icon_resize_logo"
+        app:layout_constraintStart_toEndOf="@id/iv_logo"
+        app:layout_constraintTop_toBottomOf="@id/iv_logo" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

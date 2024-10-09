@@ -1,0 +1,48 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+android {
+    compileSdk 34
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 34
+
+        ndk.abiFilters 'armeabi-v7a','arm64-v8a','x86','x86_64'
+        externalNativeBuild {
+            cmake { cppFlags "" }
+        }
+    }
+    externalNativeBuild {
+        cmake { path "src/main/cpp/CMakeLists.txt" }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+        release {
+            debuggable false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    namespace 'jp.co.cyberagent.android.gpuimage'
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+
+    compileOptions {
+        sourceCompatibility rootProject.ext.javaSourceCompatibility
+        targetCompatibility rootProject.ext.javaTargetCompatibility
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+}
+dependencies {
+
+}

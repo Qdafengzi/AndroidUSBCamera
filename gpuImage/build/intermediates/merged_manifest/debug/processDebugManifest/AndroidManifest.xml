@@ -2,6 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="jp.co.cyberagent.android.gpuimage" >
 
-    <uses-sdk android:minSdkVersion="24" />
+    <uses-sdk android:minSdkVersion="21" />
 
 </manifest>

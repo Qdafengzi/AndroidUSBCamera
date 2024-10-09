@@ -6,3 +6,5 @@ include ':libuvc'
 include ':libnative'
 
 include ':gpuImage'
+//include ':core'
+//include ':gpu'

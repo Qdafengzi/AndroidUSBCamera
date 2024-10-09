@@ -1,0 +1,2 @@
+ninja: Entering directory `/Users/finnq/Documents/Project/gem-lightbox-android/gpuimage/.cxx/Debug/5o122u1w/x86'
+ninja: no work to do.

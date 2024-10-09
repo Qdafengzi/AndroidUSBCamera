@@ -36,7 +36,7 @@ ext {
     androidXVersion = '1.9.24'
     versionCompiler = 34
     versionTarget = 34
-    minSdkVersion = 24
+    minSdkVersion = 21
     versionCode = 126
     versionNameString = '3.3.3'
     javaSourceCompatibility = JavaVersion.VERSION_17
