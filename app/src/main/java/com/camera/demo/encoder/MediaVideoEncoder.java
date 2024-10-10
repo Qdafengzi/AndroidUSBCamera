@@ -22,7 +22,6 @@ package com.camera.demo.encoder;
  * All files in the folder are under this Apache License, Version 2.0.
  */
 
-import android.annotation.TargetApi;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -36,7 +35,6 @@ import com.camera.utils.XLogger;
 
 import java.io.IOException;
 
-@TargetApi(18)
 public class MediaVideoEncoder extends MediaEncoder {
     private static final boolean DEBUG = false;
     private static final String TAG = "MediaVideoEncoder";

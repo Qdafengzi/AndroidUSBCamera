@@ -19,6 +19,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbDeviceConnection
 import android.provider.MediaStore
 import android.view.Surface
 import android.view.SurfaceView
@@ -36,6 +37,7 @@ import com.jiangdg.ausbc.utils.CameraUtils
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.MediaUtils
 import com.jiangdg.ausbc.utils.Utils
+import com.jiangdg.usb.USBMonitor
 import com.jiangdg.uvc.IFrameCallback
 import com.jiangdg.uvc.UVCCamera
 import java.io.File
@@ -559,6 +561,12 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
     fun resetHue() {
         mUvcCamera?.resetHue()
     }
+
+    fun getUsbControlBlock(): USBMonitor.UsbControlBlock? {
+        return mUvcCamera?.usbControlBlock
+    }
+
+
 
     companion object {
         private const val TAG = "CameraUVC"

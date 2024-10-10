@@ -6,6 +6,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaScannerConnection
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.View
@@ -42,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
+import com.camera.demo.UsbConstants.Companion.USB_DT_STRING
+import com.camera.demo.UsbConstants.Companion.USB_REQ_GET_DESCRIPTOR
+import com.camera.demo.UsbConstants.Companion.USB_REQ_STANDARD_DEVICE_GET
 import com.camera.demo.databinding.FragmentDemo01Binding
 import com.camera.utils.ResUtils
 import com.camera.utils.XLogger
@@ -164,9 +168,80 @@ open class UvcCameraFragment : CameraFragment() {
             ) {
                 Filters2()
                 ButtonView()
+                DeviceInfoView()
             }
 
         }
+    }
+
+    @Composable
+    fun DeviceInfoView(modifier: Modifier = Modifier) {
+        val scope = rememberCoroutineScope()
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = {
+                scope.launch {
+                    val camera = (getCurrentCamera() as? CameraUVC)
+                    camera?.let {
+                        XLogger.d("info：" +
+                                "\nmanufacturerName:${camera.device.manufacturerName}" +
+                                "\ndeviceId:${camera.device.deviceId}" +
+                                "\ndeviceName:${camera.device.deviceName}" +
+                                "\ndeviceClass:${camera.device.deviceClass}" +
+                                "\ndeviceSubclass:${camera.device.deviceSubclass}" +
+                                "\ndeviceProtocol:${camera.device.deviceProtocol}" +
+                                "\nserialNumber:${camera.device.serialNumber}" +
+                                "\nproductId:${camera.device.productId}" +
+                                "\nproductName:${camera.device.productName}" +
+                                "\nversion:${camera.device.version}" +
+                                "\nvendorId:${camera.device.vendorId}" +
+                                "")
+
+//                        camera.getUsbControlBlock()?.let {camera->
+//                            val connection = camera.connection
+//                            val languages = ByteArray(256)
+//                            var languageCount = 0
+//                            val result: Int = connection.controlTransfer(
+//                                USB_REQ_STANDARD_DEVICE_GET,  // USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_DEVICE
+//                                USB_REQ_GET_DESCRIPTOR,
+//                                (USB_DT_STRING shl 8) or 0, 0, languages, 256, 0
+//                            )
+//                            if (result > 0) {
+//                                languageCount = (result - 2) / 2
+//                            }
+//                            if (languageCount > 0) {
+//
+//                                XLogger.d("info：" +
+//                                        "deviceId:${camera.device.deviceId}\n" +
+//                                        "deviceName:${camera.device.deviceName}\n" +
+//                                        "deviceClass:${camera.device.deviceClass}\n" +
+//                                        "deviceSubclass:${camera.device.deviceSubclass}\n" +
+//                                        "deviceProtocol:${camera.device.deviceProtocol}\n" +
+//
+//                                        "manufacturerName:${camera.device.manufacturerName}\n" +
+//                                        "productName:${camera.device.productName}\n" +
+//                                        "serialNumber:${camera.device.serialNumber}\n" +
+//                                        "vendorId:${camera.device.vendorId}\n" +
+//                                        "version:${camera.device.version}\n" +
+//                                        "productId:${camera.device.productId}\n" +
+//                                        "configurationCount:${camera.device.configurationCount}\n" +
+//                                        "interfaceCount:${camera.device.interfaceCount}\n" +
+//                                        "deviceKeyNameWithSerial:${camera.deviceKeyNameWithSerial}\n" +
+//                                        "devNum:${camera.devNum}\n" +
+//                                        "deviceKey:${camera.deviceKey}\n" +
+//                                        "deviceId:${camera.deviceId}\n" +
+//                                        "deviceKeyWithSerial:${camera.deviceKeyWithSerial}\n" +
+//                                        "")
+//                            }
+//                        }
+                    }
+                }
+
+            }) {
+                Text("获取信息")
+            }
+        }
+
+
     }
 
     override fun getCameraRequest(): CameraRequest {
@@ -594,7 +669,7 @@ open class UvcCameraFragment : CameraFragment() {
 //                mViewBinding.imageView.onResume()
                 XLogger.d("mCameraClient 相机打开-----》")
                 camera?.apply {
-                    camera.sendCameraCommand()
+//                    camera.sendCameraCommand()
 
                     setAutoFocus(true)
                     setAutoWhiteBalance(true)

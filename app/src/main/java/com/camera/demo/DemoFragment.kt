@@ -63,7 +63,6 @@ import com.camera.demo.EffectListDialog.Companion.KEY_FILTER
 import com.camera.demo.databinding.DialogMoreBinding
 import com.camera.demo.databinding.FragmentDemoBinding
 import com.camera.utils.MMKVUtils
-import com.camera.utils.XLogger
 import com.jiangdg.ausbc.base.BaseBottomDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

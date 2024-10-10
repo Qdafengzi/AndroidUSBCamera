@@ -999,7 +999,7 @@ public final class USBMonitor {
 	public static final class UsbControlBlock implements Cloneable {
 		private final WeakReference<USBMonitor> mWeakMonitor;
 		private final WeakReference<UsbDevice> mWeakDevice;
-		protected UsbDeviceConnection mConnection;
+		private UsbDeviceConnection mConnection;
 		protected final UsbDeviceInfo mInfo;
 		private final int mBusNum;
 		private final int mDevNum;
