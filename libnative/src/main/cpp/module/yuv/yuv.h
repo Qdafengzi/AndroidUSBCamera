@@ -17,6 +17,7 @@ void *nv21ToYuv420spInternal(char* srcData, char* destData, int width, int heigh
 void *nv21ToYuv420spWithMirrorInternal(char* srcData, char* destData, int width, int height);
 void *nv21ToYuv420pInternal(char* srcData, char* destData, int width, int height);
 void *nv21ToYuv420pWithMirrorInternal(char* srcData, char* destData, int width, int height);
+void *cropNv21Internal(char *srcData, int width, int height, float aspectRatio, char *desData,int &newWidth, int &newHeight);
 
 #ifdef __cplusplus
 };

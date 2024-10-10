@@ -33,6 +33,7 @@ import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.SettableFuture
 import com.jiangdg.ausbc.widget.IAspectRatio
 import com.jiangdg.usb.USBMonitor
+import com.jiangdg.utils.XLogWrapper
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -85,9 +86,11 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
     protected fun registerMultiCamera() {
         mCameraClient = MultiCameraClient(requireContext(), object : IDeviceConnectCallBack {
             override fun onAttachDev(device: UsbDevice?) {
+                XLogWrapper.d("mCameraClient","onAttachDev------->${device==null}")
                 device ?: return
                 context?.let {
                     if (mCameraMap.containsKey(device.deviceId)) {
+                        XLogWrapper.d("mCameraClient","containsKey return ")
                         return
                     }
                     generateCamera(it, device).apply {
@@ -96,11 +99,13 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
                     // Initiate permission request when device insertion is detected
                     // If you want to open the specified camera, you need to override getDefaultCamera()
                     if (mRequestPermission.get()) {
+                        XLogWrapper.d("mCameraClient","have permission return ")
                         return@let
                     }
                     getDefaultCamera()?.apply {
                         if (vendorId == device.vendorId && productId == device.productId) {
                             Logger.i(TAG, "default camera pid: $productId, vid: $vendorId")
+                            XLogWrapper.d("mCameraClient","requestPermission ")
                             requestPermission(device)
                         }
                         return@let
@@ -110,6 +115,7 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
             }
 
             override fun onDetachDec(device: UsbDevice?) {
+                XLogWrapper.d("mCameraClient","onDetachDec------->")
                 mCameraMap.remove(device?.deviceId)?.apply {
                     setUsbControlBlock(null)
                 }
@@ -123,6 +129,7 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
             }
 
             override fun onConnectDev(device: UsbDevice?, ctrlBlock: USBMonitor.UsbControlBlock?) {
+                XLogWrapper.d("mCameraClient","onConnectDev------->")
                 device ?: return
                 ctrlBlock ?: return
                 context ?: return
@@ -143,11 +150,13 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
             }
 
             override fun onDisConnectDec(device: UsbDevice?, ctrlBlock: USBMonitor.UsbControlBlock?) {
+                XLogWrapper.d("mCameraClient","onDisConnectDec------->")
                 closeCamera()
                 mRequestPermission.set(false)
             }
 
             override fun onCancelDev(device: UsbDevice?) {
+                XLogWrapper.d("mCameraClient","onCancelDev------->")
                 mRequestPermission.set(false)
                 try {
                     mCurrentCamera?.cancel(true)

@@ -64,8 +64,6 @@ public final class USBMonitor {
 	private static final String ACTION_USB_PERMISSION_BASE = "com.serenegiant.USB_PERMISSION.";
 	private final String ACTION_USB_PERMISSION = ACTION_USB_PERMISSION_BASE + hashCode();
 
-	public static final String ACTION_USB_DEVICE_ATTACHED = "android.hardware.usb.action.USB_DEVICE_ATTACHED";
-
 	/**
 	 * openしているUsbControlBlock
 	 */
@@ -169,37 +167,30 @@ public final class USBMonitor {
 	@SuppressLint({"UnspecifiedImmutableFlag", "WrongConstant"})
 	public synchronized void register() throws IllegalStateException {
 		if (destroyed) throw new IllegalStateException("already destroyed");
-		if (mPermissionIntent == null) {
-			if (DEBUG) XLogWrapper.i(TAG, "register:");
-			final Context context = mWeakContext.get();
-			if (context != null) {
-				if (Build.VERSION.SDK_INT >= 34) {
-					mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE);
-				} else if (Build.VERSION.SDK_INT >= 31) {
-					// avoid acquiring intent data failed in receiver on Android12
-					// when using PendingIntent.FLAG_IMMUTABLE
-					// because it means Intent can't be modified anywhere -- jiangdg/20220929
-					int PENDING_FLAG_IMMUTABLE = 1 << 25;
-					mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), PENDING_FLAG_IMMUTABLE);
-				} else {
-					mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
-				}
-				final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
-				// ACTION_USB_DEVICE_ATTACHED never comes on some devices so it should not be added here
-				filter.addAction(ACTION_USB_DEVICE_ATTACHED);
-				filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-				if (Build.VERSION.SDK_INT >= 34) {
-					// RECEIVER_NOT_EXPORTED is required on Android 14
-//					int RECEIVER_NOT_EXPORTED = 4;
-					context.registerReceiver(mUsbReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-				} else {
-					context.registerReceiver(mUsbReceiver, filter);
-				}
+		if (mPermissionIntent != null) return;
+
+		if (DEBUG) XLogWrapper.i(TAG, "register:");
+
+		final Context context = mWeakContext.get();
+
+		if (context != null) {
+			if (Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+				mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_IMMUTABLE);
+			} else {
+				mPermissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
 			}
-			// start connection check
-			mDeviceCounts = 0;
-			mAsyncHandler.postDelayed(mDeviceCheckRunnable, 1000);
+			final IntentFilter filter = new IntentFilter(ACTION_USB_PERMISSION);
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+			filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+			if (Build.VERSION.SDK_INT >= 34) {
+				context.registerReceiver(mUsbReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+			} else {
+				context.registerReceiver(mUsbReceiver, filter);
+			}
 		}
+		// start connection check
+		mDeviceCounts = 0;
+		mAsyncHandler.postDelayed(mDeviceCheckRunnable, 10);
 	}
 
 	/**
@@ -222,6 +213,7 @@ public final class USBMonitor {
 			} catch (final Exception e) {
 				XLogWrapper.w(TAG, e);
 			}
+			XLogWrapper.d("TAG","注销");
 			mPermissionIntent = null;
 		}
 	}
@@ -507,7 +499,6 @@ public final class USBMonitor {
 	 * BroadcastReceiver for USB permission
 	 */
 	private final BroadcastReceiver mUsbReceiver = new BroadcastReceiver() {
-
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
 			if (destroyed) return;
@@ -531,10 +522,12 @@ public final class USBMonitor {
 					}
 				}
 			} else if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
+				XLogWrapper.w(TAG, "ACTION_USB_DEVICE_ATTACHED");
 				final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 				updatePermission(device, hasPermission(device));
 				processAttach(device);
 			} else if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
+				XLogWrapper.w(TAG, "ACTION_USB_DEVICE_DETACHED");
 				// when device removed
 				final UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 				if (device != null) {

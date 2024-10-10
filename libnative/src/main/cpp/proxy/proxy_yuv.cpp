@@ -157,3 +157,30 @@ void nativeRotateNV21(JNIEnv *env, jobject instance, jbyteArray j_srcArr, jint w
     // 释放临时内存
     free(c_tmp);
 }
+
+
+void cropNv21(JNIEnv *env, jobject instance, jbyteArray data, jint width, jint height,
+              jfloat aspectRatio, jbyteArray output, jintArray newDimensions) {
+    // 获取输入NV21数据
+    jbyte *srcData = env->GetByteArrayElements(data, nullptr);
+    jbyte *desData = env->GetByteArrayElements(output, nullptr);
+
+    if (srcData == nullptr || desData == nullptr) {
+        // 错误处理，无法获取数组元素
+        return;
+    }
+
+    int newWidth = 0, newHeight = 0;
+    // 调用内部裁剪函数
+    cropNv21Internal(reinterpret_cast<char *>(srcData), width, height, aspectRatio,
+                     reinterpret_cast<char *>(desData), newWidth, newHeight);
+
+    // 设置新的宽度和高度
+    jint dimensions[2] = {newWidth, newHeight};
+    env->SetIntArrayRegion(newDimensions, 0, 2, dimensions);
+
+    // 释放资源，注意输出数组需要用0以确保数据同步回Java
+    env->ReleaseByteArrayElements(data, srcData, JNI_ABORT);
+    env->ReleaseByteArrayElements(output, desData, 0);
+
+}

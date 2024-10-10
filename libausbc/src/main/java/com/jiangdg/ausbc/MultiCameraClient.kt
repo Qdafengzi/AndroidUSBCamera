@@ -7,6 +7,8 @@ import android.hardware.usb.UsbDevice
 import android.os.*
 import android.view.Surface
 import com.jiangdg.ausbc.callback.*
+import com.jiangdg.ausbc.camera.CameraUVC
+import com.jiangdg.ausbc.camera.CameraUVC.Companion
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.camera.bean.PreviewSize
 import com.jiangdg.ausbc.encode.AACEncodeProcessor
@@ -308,6 +310,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                             null
                         }
                     }.also { view->
+                        Logger.d(TAG,"handleMessage------->MSG_START_PREVIEW")
                         isNeedGLESRender = isGLESRender(renderMode == CameraRequest.RenderMode.OPENGL)
                         if (! isNeedGLESRender && view != null) {
                             openCameraInternal(view)
@@ -357,6 +360,7 @@ class MultiCameraClient(ctx: Context, callback: IDeviceConnectCallBack?) {
                     }
                 }
                 MSG_STOP_PREVIEW -> {
+                    Logger.d(TAG,"handleMessage------->MSG_STOP_PREVIEW")
                     try {
                         mSizeChangedFuture?.cancel(true)
                         mSizeChangedFuture = null

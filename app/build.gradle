@@ -5,9 +5,9 @@ plugins {
 
 android {
     compileSdk rootProject.ext.versionCompiler
-    namespace "com.jiangdg.demo"
+    namespace "com.camera.demo"
     defaultConfig {
-        applicationId "com.jiangdg.ausbc"
+        applicationId "com.camera.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.versionTarget
         versionCode rootProject.ext.versionCode
