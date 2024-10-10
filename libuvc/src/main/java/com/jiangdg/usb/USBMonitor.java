@@ -1071,8 +1071,8 @@ public final class USBMonitor {
 				}
 			}
 			mInfo = updateDeviceInfo(monitor.mUsbManager, device, null);
-			mWeakMonitor = new WeakReference<USBMonitor>(monitor);
-			mWeakDevice = new WeakReference<UsbDevice>(device);
+			mWeakMonitor = new WeakReference<>(monitor);
+			mWeakDevice = new WeakReference<>(device);
 			mBusNum = src.mBusNum;
 			mDevNum = src.mDevNum;
 			// FIXME USBMonitor.mCtrlBlocksに追加する(今はHashMapなので追加すると置き換わってしまうのでだめ, ListかHashMapにListをぶら下げる?)
@@ -1290,7 +1290,6 @@ public final class USBMonitor {
 		 * @return
 		 * @throws IllegalStateException
 		 */
-		@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 		public synchronized UsbInterface getInterface(final int interface_id, final int altsetting) throws IllegalStateException {
 			checkConnection();
 			SparseArray<UsbInterface> intfs = mInterfaces.get(interface_id);

@@ -947,6 +947,6 @@ abstract class CameraFragment : BaseFragment(), ICameraStateCallBack {
     }
 
     companion object {
-        private const val TAG = "CameraFragment"
+        protected const val TAG = "CameraFragment"
     }
 }

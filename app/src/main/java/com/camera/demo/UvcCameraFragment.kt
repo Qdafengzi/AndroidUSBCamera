@@ -2,6 +2,8 @@ package com.camera.demo
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaScannerConnection
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -41,6 +43,8 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.camera.demo.databinding.FragmentDemo01Binding
+import com.camera.utils.ResUtils
+import com.camera.utils.XLogger
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.base.CameraFragment
 import com.jiangdg.ausbc.callback.ICameraStateCallBack
@@ -51,8 +55,6 @@ import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
 import com.jiangdg.ausbc.widget.IAspectRatio
-import com.camera.utils.ResUtils
-import com.camera.utils.XLogger
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
@@ -153,7 +155,6 @@ open class UvcCameraFragment : CameraFragment() {
                 object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
             }
 
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -189,9 +190,14 @@ open class UvcCameraFragment : CameraFragment() {
 //        val width = ResUtils.dp2px(this.requireContext(),3840f)
 //        val height = ResUtils.dp2px(this.requireContext(),2880f)
         //ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt()
+
+        //三星的 1920* 1080 30fps
+        //3840*2880 16FPS
+
+
         val request = CameraRequest.Builder()
-            .setPreviewWidth(3840) // camera preview width
-            .setPreviewHeight(2160) // camera preview height
+            .setPreviewWidth(1920) // camera preview width
+            .setPreviewHeight(1080) // camera preview height
 //            .setPreviewWidth(720) // camera preview width
 //            .setPreviewHeight(480) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
@@ -478,6 +484,8 @@ open class UvcCameraFragment : CameraFragment() {
                     withContext(Dispatchers.IO) {
                         mGpuImageMovieWriter.stopRecording {
                             XLogger.d("录制已停止")
+                            val videoFile = File(requireContext().cacheDir, "record.mp4")
+                            getVideoFrameRate(videoFile.absolutePath)
                         }
                     }
                 }
@@ -496,6 +504,35 @@ open class UvcCameraFragment : CameraFragment() {
             }) {
                 Text(if (isRecording) "$recordingTime 秒" else "开始录制")
             }
+
+
+        }
+    }
+
+    fun getVideoFrameRate(videoFilePath: String?) {
+        val extractor = MediaExtractor()
+        try {
+            // 设置数据源
+            extractor.setDataSource(videoFilePath!!)
+            val numTracks = extractor.trackCount
+            for (i in 0 until numTracks) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME)
+                if (mime!!.startsWith("video/")) {
+                    // 获取帧率
+                    if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                        val frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE)
+                       XLogger.d( "Frame Rate: $frameRate fps")
+                    } else {
+                        XLogger.d( "Frame Rate information not available.")
+                    }
+                    break // 找到视频轨道后无需继续
+                }
+            }
+        } catch (e: java.lang.Exception) {
+            XLogger.d( "Error extracting video info"+ e.message)
+        } finally {
+            extractor.release()
         }
     }
 
@@ -557,6 +594,8 @@ open class UvcCameraFragment : CameraFragment() {
 //                mViewBinding.imageView.onResume()
                 XLogger.d("mCameraClient 相机打开-----》")
                 camera?.apply {
+                    camera.sendCameraCommand()
+
                     setAutoFocus(true)
                     setAutoWhiteBalance(true)
 
@@ -579,6 +618,16 @@ open class UvcCameraFragment : CameraFragment() {
 //                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             mLifecycleOwner.launch(Dispatchers.IO) {
                                 data?.let {
+//                                    mViewBinding.imageView.updatePreviewFrame(
+//                                        data,
+//                                        width,
+//                                        height
+//                                    )
+//                                    //省点模式
+//                                    mViewBinding.imageView.requestRender()
+//                                    return@launch
+
+
 //                                    val newData = ByteArray(width *height * 3 / 2) // 足够大的缓冲区
 //                                    val newDimensions = IntArray(2)
 //                                    // 调用native方法
