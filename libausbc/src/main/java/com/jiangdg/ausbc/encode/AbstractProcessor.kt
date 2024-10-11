@@ -178,7 +178,7 @@ abstract class AbstractProcessor(private val isVideo: Boolean) {
     /**
      * Is lower lollipop
      */
-    private fun isLowerLollipop() = Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP
+    private fun isLowerLollipop() = false
 
     /**
      * Do encode data
@@ -250,16 +250,13 @@ abstract class AbstractProcessor(private val isVideo: Boolean) {
             if (inputIndex < 0) {
                 return@let
             }
-            val inputBuffer = if (isLowerLollipop()) {
-                codec.inputBuffers[inputIndex]
-            } else {
-                codec.getInputBuffer(inputIndex)
-            }
+            val inputBuffer = codec.getInputBuffer(inputIndex)
             inputBuffer?.clear()
             inputBuffer?.put(data)
             codec.queueInputBuffer(inputIndex, 0, data.size, getPTSUs(data.size), 0)
         }
     }
+
 
     protected abstract fun processOutputData(
         encodeData: ByteBuffer,

@@ -23,7 +23,6 @@ import android.provider.MediaStore
 import android.view.Surface
 import android.view.SurfaceView
 import android.view.TextureView
-import com.elvishew.xlog.XLog
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.MultiCameraClient.Companion.CAPTURE_TIMES_OUT_SEC
 import com.jiangdg.ausbc.MultiCameraClient.Companion.MAX_NV21_DATA
@@ -36,7 +35,6 @@ import com.jiangdg.ausbc.utils.CameraUtils
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.MediaUtils
 import com.jiangdg.ausbc.utils.Utils
-import com.jiangdg.usb.USBMonitor
 import com.jiangdg.uvc.IFrameCallback
 import com.jiangdg.uvc.UVCCamera
 import java.io.File
@@ -250,7 +248,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         }
 
         mUvcCamera?.autoFocus = true
-        mUvcCamera?.autoWhiteBlance = true
+        mUvcCamera?.autoWhiteBalance = true
         mUvcCamera?.startPreview()
         mUvcCamera?.updateCameraParams()
         isPreviewed = true
@@ -379,7 +377,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
      * @param autoWhiteBalance true enable auto white balance
      */
     fun setAutoWhiteBalance(autoWhiteBalance: Boolean) {
-        mUvcCamera?.autoWhiteBlance = autoWhiteBalance
+        mUvcCamera?.autoWhiteBalance = autoWhiteBalance
     }
 
     /**
@@ -387,7 +385,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
      *
      * @return true enable auto white balance
      */
-    fun getAutoWhiteBalance() = mUvcCamera?.autoWhiteBlance
+    fun getAutoWhiteBalance() = mUvcCamera?.autoWhiteBalance
 
 
     fun setFocus(focus: Int) {
@@ -437,8 +435,22 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         mUvcCamera?.resetExposure()
     }
 
-    fun getExposureMin() = mUvcCamera?.exposureMin
     fun getExposureMax() = mUvcCamera?.exposureMax
+    fun getExposureMin() = mUvcCamera?.exposureMin
+
+
+    fun getExposureModel() = mUvcCamera?.exposureModel
+
+    fun setExposureModel(model: Int) {
+        mUvcCamera?.exposureModel = model
+    }
+
+    fun resetExposureModel() {
+        mUvcCamera?.resetExposureModel()
+    }
+
+    fun getExposureModelMax() = mUvcCamera?.exposureModelMax
+    fun getExposureModelMin() = mUvcCamera?.exposureModelMin
 
     /**
      * Set gain

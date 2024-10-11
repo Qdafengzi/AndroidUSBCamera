@@ -73,6 +73,8 @@ import java.io.File
 import java.nio.ByteBuffer
 
 
+
+
 data class UvcCameraUIState(
     val autoWhiteBalance: Boolean = true,
     val autoFocus: Boolean = true,
@@ -106,8 +108,23 @@ data class UvcCameraUIState(
     val focus: Float = 1f,
     val focusMax: Float = 1f,
     val focusMin: Float = 1f,
-
+    val exposureModel: Int = 1,
+    val exposureModelMax: Int = 1,
+    val exposureModelMin: Int = 1,
 )
+
+enum class ExposureModel(val value: Int) {
+    //自动曝光（Auto Mode）：通常为 0x02
+    //手动曝光（Manual Mode）：通常为 0x01
+    //快门优先（Shutter Priority Mode）：通常为 0x04
+    //光圈优先（Aperture Priority Mode）：通常为 0x08
+    MANUAL_MODEL(0x01),
+    AUTO_MODE(0x02),
+    SHUTTER_PRIORITY(0x04),
+    APERTURE_PRIORITY(0x08),
+}
+
+
 
 class UvcCameraViewModel : ViewModel() {
     private val _cameraUIState = MutableStateFlow(UvcCameraUIState())
@@ -176,7 +193,7 @@ open class UvcCameraFragment : CameraFragment() {
         mViewBinding.imageView.setDrawVideoListener {
             mGpuImageMovieWriter.drawVideo = true
         }
-        mGpuImageMovieWriter.setFrameRate(30)
+        mGpuImageMovieWriter.setFrameRate(60)
 
         mGpuImageMovieWriter.gpuImageErrorListener =
             GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
@@ -300,8 +317,12 @@ open class UvcCameraFragment : CameraFragment() {
         //三星的 1920* 1080 30fps
         //3840*2880 16FPS
         val request = CameraRequest.Builder()
-//            .setPreviewWidth(1920) // camera preview width
-//            .setPreviewHeight(1080) // camera preview height
+//            .setPreviewWidth(3840) // camera preview width
+//            .setPreviewHeight(2160) // camera preview height
+
+            .setPreviewWidth(1920) // camera preview width
+            .setPreviewHeight(1080) // camera preview height
+
 //            .setPreviewWidth(720) // camera preview width
 //            .setPreviewHeight(480) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
@@ -373,6 +394,10 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = exposureValue,
             onValueChange = { progress ->
                 exposureValue.floatValue = progress
+                //调成手动模式
+                //TODO:有问题
+//                (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
+//                (getCurrentCamera() as? CameraUVC)?.resetExposureModel()
                 (getCurrentCamera() as? CameraUVC)?.setExposure(progress.toInt())
             }
         )
@@ -668,57 +693,6 @@ open class UvcCameraFragment : CameraFragment() {
         }
     }
 
-
-
-    @Composable
-    fun RecordButton1() {
-        val scope = rememberCoroutineScope()
-
-
-        XLogger.d("RecordButton")
-        Button(onClick = {
-            scope.launch(Dispatchers.IO) {
-                val videoFile = File(requireContext().cacheDir, "record.mp4")
-                if (videoFile.exists()) {
-                    videoFile.delete()
-                }
-                videoFile.createNewFile()
-                mGpuImageMovieWriter.apply {
-                    drawVideo = true
-                    prepareRecording(
-                        videoFile.absolutePath,
-                        mRenderWidth,
-                        mRenderHeight,
-                    )
-                    delay(200)
-                    startRecording(object : GPUImageMovieWriter.StartRecordListener {
-                        override fun onRecordStart() {
-                            XLogger.d("录制-------->onRecordStart")
-                        }
-
-                        override fun onRecordError(e: Exception?) {
-                            XLogger.d("录制-------->onRecordError:${e?.message}")
-                        }
-                    })
-                }
-            }
-        }) {
-            Text("录像")
-        }
-
-        Button(onClick = {
-            scope.launch(Dispatchers.IO) {
-                mGpuImageMovieWriter.stopRecording {
-                    XLogger.d("暂停了")
-                }
-            }
-
-        }) {
-            Text("暂停")
-        }
-    }
-
-
     override fun onCameraState(self: MultiCameraClient.ICamera, code: ICameraStateCallBack.State, msg: String?) {
         val camera = (getCurrentCamera() as? CameraUVC)
         when (code) {
@@ -730,39 +704,43 @@ open class UvcCameraFragment : CameraFragment() {
 
                     setAutoFocus(false)//画面不晃动
                     setAutoWhiteBalance(true)
+//                    (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
 
-                    val autoWhiteBalance = getAutoWhiteBalance()?:true
-                    val autoFocus = getAutoFocus()?:true
-                    val contrastMin = getContrastMin()?.toFloat()?:0f
-                    val contrastMax = getContrastMax()?.toFloat()?:0f
-                    val contrast = getContrast()?.toFloat()?:0f
-                    val sharpness = getSharpness()?.toFloat()?:0f
-                    val sharpnessMax = getSharpnessMax()?.toFloat()?:0f
-                    val sharpnessMin = getSharpnessMin()?.toFloat()?:0f
-                    val hue = getHue()?.toFloat()?:0f
-                    val hueMax = getHueMax()?.toFloat()?:0f
-                    val hueMin = getHueMin()?.toFloat()?:0f
-                    val gain = getGain()?.toFloat()?:0f
-                    val gainMax = getGainMax()?.toFloat()?:0f
-                    val gainMin = getGainMin()?.toFloat()?:0f
-                    val gamma = getGamma()?.toFloat()?:0f
-                    val gammaMax = getGammaMax()?.toFloat()?:0f
-                    val gammaMin = getGammaMin()?.toFloat()?:0f
-                    val saturation = getSaturation()?.toFloat()?:0f
-                    val saturationMax = getSaturationMax()?.toFloat()?:0f
-                    val saturationMin = getSaturationMin()?.toFloat()?:0f
-                    val brightness = getBrightness()?.toFloat()?:0f
-                    val brightnessMax = getBrightnessMax()?.toFloat()?:0f
-                    val brightnessMin = getBrightnessMin()?.toFloat()?:0f
-                    val zoom = getZoom()?.toFloat()?:1f
-                    val zoomMax = getZoomMax()?.toFloat()?:1f
-                    val zoomMin = getZoomMin()?.toFloat()?:1f
-                    val exposure = getExposure()?.toFloat()?:1f
-                    val exposureMax = getExposureMax()?.toFloat()?:1f
-                    val exposureMin = getExposureMin()?.toFloat()?:1f
-                    val focus = getFocus()?.toFloat()?:1f
-                    val focusMax = getFocusMax()?.toFloat()?:1f
-                    val focusMin = getFocusMin()?.toFloat()?:1f
+                    val autoWhiteBalance = getAutoWhiteBalance() ?: true
+                    val autoFocus = getAutoFocus() ?: true
+                    val contrastMin = getContrastMin()?.toFloat() ?: 0f
+                    val contrastMax = getContrastMax()?.toFloat() ?: 0f
+                    val contrast = getContrast()?.toFloat() ?: 0f
+                    val sharpness = getSharpness()?.toFloat() ?: 0f
+                    val sharpnessMax = getSharpnessMax()?.toFloat() ?: 0f
+                    val sharpnessMin = getSharpnessMin()?.toFloat() ?: 0f
+                    val hue = getHue()?.toFloat() ?: 0f
+                    val hueMax = getHueMax()?.toFloat() ?: 0f
+                    val hueMin = getHueMin()?.toFloat() ?: 0f
+                    val gain = getGain()?.toFloat() ?: 0f
+                    val gainMax = getGainMax()?.toFloat() ?: 0f
+                    val gainMin = getGainMin()?.toFloat() ?: 0f
+                    val gamma = getGamma()?.toFloat() ?: 0f
+                    val gammaMax = getGammaMax()?.toFloat() ?: 0f
+                    val gammaMin = getGammaMin()?.toFloat() ?: 0f
+                    val saturation = getSaturation()?.toFloat() ?: 0f
+                    val saturationMax = getSaturationMax()?.toFloat() ?: 0f
+                    val saturationMin = getSaturationMin()?.toFloat() ?: 0f
+                    val brightness = getBrightness()?.toFloat() ?: 0f
+                    val brightnessMax = getBrightnessMax()?.toFloat() ?: 0f
+                    val brightnessMin = getBrightnessMin()?.toFloat() ?: 0f
+                    val zoom = getZoom()?.toFloat() ?: 1f
+                    val zoomMax = getZoomMax()?.toFloat() ?: 1f
+                    val zoomMin = getZoomMin()?.toFloat() ?: 1f
+                    val exposure = getExposure()?.toFloat() ?: 1f
+                    val exposureMax = getExposureMax()?.toFloat() ?: 1f
+                    val exposureMin = getExposureMin()?.toFloat() ?: 1f
+                    val focus = getFocus()?.toFloat() ?: 1f
+                    val focusMax = getFocusMax()?.toFloat() ?: 1f
+                    val focusMin = getFocusMin()?.toFloat() ?: 1f
+                    val exposureModel = getExposureModel() ?: 1
+                    val exposureModelMax = getExposureModelMax() ?: 1
+                    val exposureModelMin = getExposureModelMin() ?: 1
 
                     val uiState = UvcCameraUIState(
                         autoWhiteBalance = autoWhiteBalance,
@@ -796,7 +774,10 @@ open class UvcCameraFragment : CameraFragment() {
                         exposure = exposure,
                         focusMax = focusMax,
                         focusMin = focusMin,
-                        focus = focus
+                        focus = focus,
+                        exposureModel = exposureModel,
+                        exposureModelMax = exposureModelMax,
+                        exposureModelMin = exposureModelMin
                     )
 
                     XLogger.d("参数:${uiState}")

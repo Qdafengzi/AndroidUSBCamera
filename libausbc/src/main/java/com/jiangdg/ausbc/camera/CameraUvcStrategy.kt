@@ -195,7 +195,7 @@ class CameraUvcStrategy(ctx: Context) : ICameraStrategy(ctx) {
                 mUVCCamera?.setPreviewDisplay(holder)
             }
             mUVCCamera?.autoFocus = true
-            mUVCCamera?.autoWhiteBlance = true
+            mUVCCamera?.autoWhiteBalance = true
             mUVCCamera?.startPreview()
             mUVCCamera?.updateCameraParams()
             mIsPreviewing.set(true)
@@ -631,7 +631,7 @@ class CameraUvcStrategy(ctx: Context) : ICameraStrategy(ctx) {
      * @param autoWhiteBalance true enable auto white balance
      */
     fun setAutoWhiteBalance(autoWhiteBalance: Boolean) {
-        mUVCCamera?.autoWhiteBlance = autoWhiteBalance
+        mUVCCamera?.autoWhiteBalance = autoWhiteBalance
     }
 
     /**
