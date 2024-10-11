@@ -8,8 +8,6 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaScannerConnection
 import android.os.Bundle
-import android.text.BoringLayout
-import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.View
@@ -22,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -43,14 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.camera.demo.databinding.FragmentDemo01Binding
-import com.camera.utils.ResUtils
 import com.camera.utils.XLogger
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.base.CameraFragment
@@ -63,6 +57,7 @@ import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import jp.co.cyberagent.android.gpuimage.GPUImageView
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageLevelsFilter
@@ -108,9 +103,9 @@ data class UvcCameraUIState(
     val exposure: Float = 1f,
     val exposureMax: Float = 1f,
     val exposureMin: Float = 1f,
-    val focus:Float = 1f,
-    val focusMax:Float = 1f,
-    val focusMin:Float = 1f,
+    val focus: Float = 1f,
+    val focusMax: Float = 1f,
+    val focusMin: Float = 1f,
 
 )
 
@@ -137,6 +132,13 @@ open class UvcCameraFragment : CameraFragment() {
 
     private val mGpuImageMovieWriter by lazy {
         GPUImageMovieWriter()
+    }
+    private val mGPUImageWhiteBalanceFilter by lazy{
+        GPUImageWhiteBalanceFilter()
+    }
+
+    private val mGPUImageBrightnessFilter by lazy{
+        GPUImageBrightnessFilter()
     }
 
     private val mGpuImageLevelsFilter by lazy {
@@ -167,7 +169,8 @@ open class UvcCameraFragment : CameraFragment() {
         val gpuImageFilters = mutableListOf<GPUImageFilter>()
         gpuImageFilters.add(mGpuImageMovieWriter)
         gpuImageFilters.add(mGpuImageLevelsFilter)
-        gpuImageFilters.add(GPUImageWhiteBalanceFilter())
+        gpuImageFilters.add(mGPUImageWhiteBalanceFilter)
+        gpuImageFilters.add(mGPUImageBrightnessFilter)
 
         mViewBinding.imageView.filter = GPUImageFilterGroup(gpuImageFilters)
         mViewBinding.imageView.setDrawVideoListener {
@@ -191,7 +194,7 @@ open class UvcCameraFragment : CameraFragment() {
                     .verticalScroll(state = scrollState, enabled = true)
                     .background(color = Color.White),
             ) {
-                Filters2()
+                FiltersView()
                 ButtonView()
                 Row(){
                     ResetView()
@@ -232,7 +235,6 @@ open class UvcCameraFragment : CameraFragment() {
                     resetGain()
                     resetAutoFocus()
                     //camera.setAutoFocus(false)
-
                 }
             }
         }) {
@@ -346,7 +348,7 @@ open class UvcCameraFragment : CameraFragment() {
 
 
     @Composable
-    fun Filters2() {
+    fun FiltersView() {
         XLogger.d("Filters2 刷新")
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
 
@@ -443,7 +445,7 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = temperatureSliderValue,
             onValueChange = { progress ->
                 temperatureSliderValue.floatValue = progress
-
+                mGPUImageWhiteBalanceFilter.setTemperature(progress)
             }
         )
 
@@ -454,6 +456,7 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = tintSliderValue,
             onValueChange = { progress ->
                 tintSliderValue.floatValue = progress
+                mGPUImageWhiteBalanceFilter.setTint(progress)
             }
         )
 
@@ -468,14 +471,14 @@ open class UvcCameraFragment : CameraFragment() {
             }
         )
 
-        val brightness2SliderValue = remember { mutableFloatStateOf(1f) }
+        val brightness2SliderValue = remember { mutableFloatStateOf(0f) }
         SliderView(
             name = "Brightness by filter",
             range = -1f..1f,
             sliderValue = brightness2SliderValue,
             onValueChange = { progress ->
                 brightness2SliderValue.floatValue = progress
-
+                mGPUImageBrightnessFilter.setBrightness(progress)
             }
         )
 
@@ -491,16 +494,16 @@ open class UvcCameraFragment : CameraFragment() {
             }
         )
 
-                val zoomSliderValue = remember { mutableFloatStateOf(cameraUIState.zoom) }
-                SliderView(
-                    name = "Zoom",
-                    range = cameraUIState.zoomMin..cameraUIState.zoomMax,
-                    sliderValue = zoomSliderValue,
-                    onValueChange = { progress ->
-                        zoomSliderValue.floatValue = progress
-                        (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
-                    }
-                )
+        val zoomSliderValue = remember { mutableFloatStateOf(cameraUIState.zoom) }
+        SliderView(
+            name = "Zoom",
+            range = cameraUIState.zoomMin..cameraUIState.zoomMax,
+            sliderValue = zoomSliderValue,
+            onValueChange = { progress ->
+                zoomSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
+            }
+        )
 
     }
 
