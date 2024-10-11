@@ -9,3 +9,10 @@
 5.除了曝光其他的都是用的滤镜来完成的
 
 6.4K视频困难
+
+
+分辨率问题
+https://github.com/saki4510t/UVCCamera/issues/13
+https://patents.google.com/patent/CN105578008A/zh
+https://blackox.cn/2023/09/04/usbcamera-android-4k%E6%94%AF%E6%8C%81/
+https://github.com/shengjunhu/android_camera_uvc/tree/master 

@@ -55,6 +55,7 @@ import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
+import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
@@ -173,6 +174,84 @@ open class UvcCameraFragment : CameraFragment() {
         return mViewBinding.root
     }
 
+    override fun getCameraRequest(): CameraRequest {
+        /**
+         *  3840 * 2160
+         *  3840 * 2880
+         *  3264 * 2448
+         *  2592 * 1944
+         *  2048 * 1536
+         *
+         *  1600 * 1200
+         *  1920 * 1080
+         *  1280 * 960
+         *  1280 * 720
+         *  1024 * 768
+         *  800 * 600
+         *  640 * 480
+         *  640 * 360
+         *  720 * 576
+         */
+//        val width = ResUtils.dp2px(this.requireContext(),3840f)
+//        val height = ResUtils.dp2px(this.requireContext(),2880f)
+        //ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt()
+
+        //三星的 1920* 1080 30fps
+        //3840*2880 16FPS
+        val request = CameraRequest.Builder()
+//            .setPreviewWidth(3840) // camera preview width
+//            .setPreviewHeight(2160) // camera preview height
+
+            .setPreviewWidth(1920) // camera preview width
+            .setPreviewHeight(1080) // camera preview height
+
+//            .setPreviewWidth(720) // camera preview width
+//            .setPreviewHeight(480) // camera preview height
+            .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
+            .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
+            .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
+//            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // //todo:YUYV格式的很卡
+            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
+            .setAspectRatioShow(true) // aspect render,default is true
+            .setCaptureRawImage(true) // capture raw image picture when opengl mode
+            .setRawPreviewData(true)  // preview raw image when opengl mode
+//            .setDefaultEffect(Effect)
+            .create()
+
+        return request
+
+    }
+
+    override fun getCameraView(): IAspectRatio {
+//        val view = AspectRatioSurfaceView(requireContext())
+//        view.holder.addCallback(object : SurfaceHolder.Callback {
+//            override fun surfaceCreated(holder: SurfaceHolder) {
+//                XLogger.d("AspectRatioSurfaceView------> surfaceCreated")
+////                holder.setFormat(PixelFormat.TRANSPARENT)
+////                drawEmpty(holder)
+//            }
+//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+//                XLogger.d("AspectRatioSurfaceView------> surfaceChanged")
+//            }
+//
+//            override fun surfaceDestroyed(holder: SurfaceHolder) {
+//                XLogger.d("AspectRatioSurfaceView------> surfaceDestroyed")
+//            }
+//        })
+//        return view
+
+
+        return AspectRatioTextureView(requireContext())
+    }
+
+    private fun drawEmpty(holder: SurfaceHolder) {
+        val canvas = holder.lockCanvas()
+        canvas?.let {
+            it.drawColor(Color.Transparent.toArgb()) // Clear with a transparent color
+            holder.unlockCanvasAndPost(it)
+        }
+    }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -289,81 +368,6 @@ open class UvcCameraFragment : CameraFragment() {
                 Text("info")
             }
             Text(deviceInfo)
-        }
-    }
-
-    override fun getCameraRequest(): CameraRequest {
-        /**
-         *  3840 * 2160
-         *  3840 * 2880
-         *  3264 * 2448
-         *  2592 * 1944
-         *  2048 * 1536
-         *
-         *  1600 * 1200
-         *  1920 * 1080
-         *  1280 * 960
-         *  1280 * 720
-         *  1024 * 768
-         *  800 * 600
-         *  640 * 480
-         *  640 * 360
-         *  720 * 576
-         */
-//        val width = ResUtils.dp2px(this.requireContext(),3840f)
-//        val height = ResUtils.dp2px(this.requireContext(),2880f)
-        //ResUtils.screenWidth ,(ResUtils.screenWidth *9f/16f).toInt()
-
-        //三星的 1920* 1080 30fps
-        //3840*2880 16FPS
-        val request = CameraRequest.Builder()
-//            .setPreviewWidth(3840) // camera preview width
-//            .setPreviewHeight(2160) // camera preview height
-
-            .setPreviewWidth(1920) // camera preview width
-            .setPreviewHeight(1080) // camera preview height
-
-//            .setPreviewWidth(720) // camera preview width
-//            .setPreviewHeight(480) // camera preview height
-            .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
-            .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
-            .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
-//            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // //todo:YUYV格式的很卡
-            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
-            .setAspectRatioShow(true) // aspect render,default is true
-            .setCaptureRawImage(true) // capture raw image picture when opengl mode
-            .setRawPreviewData(true)  // preview raw image when opengl mode
-//            .setDefaultEffect(Effect)
-            .create()
-
-        return request
-
-    }
-
-    override fun getCameraView(): IAspectRatio {
-        val view = AspectRatioSurfaceView(requireContext())
-        view.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                XLogger.d("AspectRatioSurfaceView------> surfaceCreated")
-//                holder.setFormat(PixelFormat.TRANSPARENT)
-//                drawEmpty(holder)
-            }
-            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                XLogger.d("AspectRatioSurfaceView------> surfaceChanged")
-            }
-
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                XLogger.d("AspectRatioSurfaceView------> surfaceDestroyed")
-            }
-        })
-        return view
-    }
-
-    private fun drawEmpty(holder: SurfaceHolder) {
-        val canvas = holder.lockCanvas()
-        canvas?.let {
-            it.drawColor(Color.Transparent.toArgb()) // Clear with a transparent color
-            holder.unlockCanvasAndPost(it)
         }
     }
 
