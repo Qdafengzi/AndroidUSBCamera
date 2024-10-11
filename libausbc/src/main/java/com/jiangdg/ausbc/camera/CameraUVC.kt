@@ -19,7 +19,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
-import android.hardware.usb.UsbDeviceConnection
 import android.provider.MediaStore
 import android.view.Surface
 import android.view.SurfaceView
@@ -411,6 +410,13 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         mUvcCamera?.resetZoom()
     }
 
+
+    fun getZoomMax() = mUvcCamera?.zoomMax
+
+    fun getZoomMin() = mUvcCamera?.zoomMin
+
+
+
     /**
      * Set gain
      *
@@ -432,6 +438,11 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         mUvcCamera?.resetGain()
     }
 
+    fun getGainMax() = mUvcCamera?.gainMax
+
+    fun getGainMin() = mUvcCamera?.gainMin
+
+
     /**
      * Set gamma
      *
@@ -452,6 +463,11 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
     fun resetGamma() {
         mUvcCamera?.resetGamma()
     }
+
+    fun getGammaMax() = mUvcCamera?.gammaMax
+
+    fun getGammaMin() = mUvcCamera?.gammaMin
+
 
     /**
      * Set brightness
@@ -492,6 +508,10 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
      */
     fun getContrast() = mUvcCamera?.contrast
 
+    fun getContrastMax() = mUvcCamera?.contrastMax
+
+    fun getContrastMin() = mUvcCamera?.contrastMin
+
     /**
      * Reset contrast
      */
@@ -520,6 +540,11 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         mUvcCamera?.resetSharpness()
     }
 
+    fun getSharpnessMax() = mUvcCamera?.sharpnessMax
+
+    fun getSharpnessMin() = mUvcCamera?.sharpnessMin
+
+
     /**
      * Set saturation
      *
@@ -540,6 +565,11 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
     fun resetSaturation() {
         mUvcCamera?.resetSaturation()
     }
+
+    fun getSaturationMax() = mUvcCamera?.saturationMax
+
+    fun getSaturationMin() = mUvcCamera?.saturationMin
+
 
     /**
      * Set hue
@@ -562,10 +592,9 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         mUvcCamera?.resetHue()
     }
 
-    fun getUsbControlBlock(): USBMonitor.UsbControlBlock? {
-        return mUvcCamera?.usbControlBlock
-    }
+    fun getHueMax() = mUvcCamera?.hueMax
 
+    fun getHueMin() = mUvcCamera?.hueMin
 
 
     companion object {

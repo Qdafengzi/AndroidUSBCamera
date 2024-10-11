@@ -681,6 +681,14 @@ public class UVCCamera {
     	}
     }
 
+	public synchronized int getContrastMax() {
+		return mContrastMax;
+	}
+
+	public synchronized int getContrastMin() {
+		return mContrastMin;
+	}
+
 //================================================================================
     /**
      * @param sharpness [%]
@@ -721,6 +729,14 @@ public class UVCCamera {
     		nativeSetSharpness(mNativePtr, mSharpnessDef);
     	}
     }
+
+	public synchronized int getSharpnessMax() {
+		return mSharpnessMax;
+	}
+
+	public synchronized int getSharpnessMin() {
+		return mSharpnessMin;
+	}
 //================================================================================
     /**
      * @param gain [%]
@@ -761,6 +777,14 @@ public class UVCCamera {
     		nativeSetGain(mNativePtr, mGainDef);
     	}
     }
+
+	public synchronized int getGainMax() {
+		return mGainMax;
+	}
+
+	public synchronized int getGainMin() {
+		return mGainMin;
+	}
 
 //================================================================================
     /**
@@ -803,6 +827,14 @@ public class UVCCamera {
     	}
     }
 
+	public synchronized int getGammaMax() {
+		return mGammaMax;
+	}
+
+	public synchronized int getGammaMin() {
+		return mGammaMin;
+	}
+
 //================================================================================
     /**
      * @param saturation [%]
@@ -843,6 +875,14 @@ public class UVCCamera {
     		nativeSetSaturation(mNativePtr, mSaturationDef);
     	}
     }
+
+	public synchronized int getSaturationMax() {
+		return mSaturationMax;
+	}
+
+	public synchronized int getSaturationMin() {
+		return mSaturationMin;
+	}
 //================================================================================
     /**
      * @param hue [%]
@@ -883,6 +923,14 @@ public class UVCCamera {
     		nativeSetHue(mNativePtr, mSaturationDef);
     	}
     }
+
+	public synchronized int getHueMax() {
+		return mHueMax;
+	}
+
+	public synchronized int getHueMin() {
+		return mHueMin;
+	}
 
 //================================================================================
 	public void setPowerlineFrequency(final int frequency) {
@@ -938,6 +986,14 @@ public class UVCCamera {
     		nativeSetZoom(mNativePtr, mZoomDef);
     	}
     }
+
+	public synchronized int getZoomMax() {
+		return mZoomMax;
+	}
+
+	public synchronized int getZoomMin() {
+		return mZoomMin;
+	}
 
 //================================================================================
 
