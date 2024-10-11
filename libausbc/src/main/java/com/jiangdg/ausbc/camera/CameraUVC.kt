@@ -389,6 +389,17 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
      */
     fun getAutoWhiteBalance() = mUvcCamera?.autoWhiteBlance
 
+
+    fun setFocus(focus: Int) {
+        mUvcCamera?.focus = focus
+    }
+
+    fun getFocus() = mUvcCamera?.focus
+
+    fun getFocusMax() = mUvcCamera?.focusMax
+    fun getFocusMin() = mUvcCamera?.focusMin
+
+
     /**
      * Set zoom
      *
@@ -416,6 +427,18 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
     fun getZoomMin() = mUvcCamera?.zoomMin
 
 
+    fun getExposure() = mUvcCamera?.exposure
+
+    fun setExposure(exposure: Int) {
+        mUvcCamera?.exposure = exposure
+    }
+
+    fun resetExposure() {
+        mUvcCamera?.resetExposure()
+    }
+
+    fun getExposureMin() = mUvcCamera?.exposureMin
+    fun getExposureMax() = mUvcCamera?.exposureMax
 
     /**
      * Set gain

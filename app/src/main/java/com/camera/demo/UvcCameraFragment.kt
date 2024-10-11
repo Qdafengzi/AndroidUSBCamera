@@ -22,9 +22,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -46,9 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
-import com.camera.demo.UsbConstants.Companion.USB_DT_STRING
-import com.camera.demo.UsbConstants.Companion.USB_REQ_GET_DESCRIPTOR
-import com.camera.demo.UsbConstants.Companion.USB_REQ_STANDARD_DEVICE_GET
 import com.camera.demo.databinding.FragmentDemo01Binding
 import com.camera.utils.ResUtils
 import com.camera.utils.XLogger
@@ -105,6 +105,13 @@ data class UvcCameraUIState(
     val zoom: Float = 1f,
     val zoomMax: Float = 1f,
     val zoomMin: Float = 1f,
+    val exposure: Float = 1f,
+    val exposureMax: Float = 1f,
+    val exposureMin: Float = 1f,
+    val focus:Float = 1f,
+    val focusMax:Float = 1f,
+    val focusMin:Float = 1f,
+
 )
 
 class UvcCameraViewModel : ViewModel() {
@@ -151,10 +158,10 @@ open class UvcCameraFragment : CameraFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val layoutParams = mViewBinding.imageView.layoutParams as ConstraintLayout.LayoutParams
-        layoutParams.width = (ResUtils.screenWidth * 300 / 375f).toInt()
-        layoutParams.height = ResUtils.screenWidth
-        mViewBinding.imageView.layoutParams = layoutParams
+//        val layoutParams = mViewBinding.imageView.layoutParams as ConstraintLayout.LayoutParams
+//        layoutParams.width = (ResUtils.screenWidth * 300 / 375f).toInt()
+//        layoutParams.height = ResUtils.screenWidth
+//        mViewBinding.imageView.layoutParams = layoutParams
 
         mViewBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
         val gpuImageFilters = mutableListOf<GPUImageFilter>()
@@ -171,99 +178,80 @@ open class UvcCameraFragment : CameraFragment() {
         mGpuImageMovieWriter.gpuImageErrorListener =
             GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
 
+        setContent()
+
+    }
+
+    private fun setContent(){
         mViewBinding.compose.setContent {
             val scrollState = rememberScrollState()
-            // Create a nested scroll connection to handle nested scroll scenarios
-            val nestedScrollConnection = remember {
-                object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
-            }
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(state = scrollState, enabled = true)
-                    .nestedScroll(connection = nestedScrollConnection)
                     .background(color = Color.White),
             ) {
                 Filters2()
                 ButtonView()
+                Row(){
+                    ResetView()
+                    AutoBalanceView()
+                }
                 DeviceInfoView()
             }
+        }
+    }
 
+    @Composable
+    fun AutoBalanceView() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        var autoWhiteBalance by remember { mutableStateOf(cameraUIState.autoWhiteBalance) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+           Text("AutoWhiteBalance")
+           Switch(checked = autoWhiteBalance,onCheckedChange = {
+               autoWhiteBalance = it
+               (getCurrentCamera() as? CameraUVC)?.setAutoWhiteBalance(it)
+           })
+       }
+    }
+
+    @Composable
+    fun ResetView() {
+        val scope = rememberCoroutineScope()
+        Button(onClick = {
+            scope.launch {
+                val camera = (getCurrentCamera() as? CameraUVC)
+                camera?.apply {
+                    resetGamma()
+                    resetHue()
+                    resetContrast()
+                    resetSharpness()
+                    resetSaturation()
+                    resetBrightness()
+                    resetZoom()
+                    resetGain()
+                    resetAutoFocus()
+                    //camera.setAutoFocus(false)
+
+                }
+            }
+        }) {
+            Text("Reset")
         }
     }
 
     @Composable
     fun DeviceInfoView() {
         val scope = rememberCoroutineScope()
-        Row(modifier = Modifier.fillMaxWidth()) {
+        var deviceInfo by  remember { mutableStateOf("") }
+        Column {
             Button(onClick = {
                 scope.launch {
                     val camera = (getCurrentCamera() as? CameraUVC)
-                    camera?.apply {
-                        resetGamma()
-                        resetHue()
-                        resetContrast()
-                        resetSharpness()
-                        resetSaturation()
-                        resetBrightness()
-                        resetZoom()
-                        resetGain()
-                        resetAutoFocus()
-                    }
-
-                    val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
                     camera?.let {
+                        val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
                         val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
-                        //bmRequestType=33 bRequest=1 wValue=2048 wIndex=256 wLength=1 pData=0x000000016fd42d88
-
-                        val bmRequestType = 33 // 请求类型
-                        val bRequest = 1       // 请求码
-                        val wValue = 2048      // 值
-                        val wIndex = 256       // 索引
-                        val wLength = 1        // 长度
-                        val pData = byteArrayOf(0x01) // 数据缓冲区，假设要发送一个字节0x01
-
-                        val timeout = 1000 // 超时1秒
-                        XLogger.d("---${usbDeviceConnection.fileDescriptor}")
-                        XLogger.d("---${usbDeviceConnection.serial}")
-
-//                        val result = usbDeviceConnection.controlTransfer(
-//                            bmRequestType,
-//                            bRequest,
-//                            wValue,
-//                            wIndex,
-//                            pData,
-//                            wLength,
-//                            timeout
-//                        )
-//
-//                        if (result >= 0) {
-//                            XLogger.d("控制传输成功，传输的字节数：$result")
-//                        } else {
-//                            XLogger.d("控制传输失败 :$result")
-//                        }
-                        camera?.setAutoFocus(true)
-
-                        val languages = ByteArray(256)
-                        try {
-                            val result1: Int = usbDeviceConnection.controlTransfer(
-                                USB_REQ_STANDARD_DEVICE_GET,  // USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_DEVICE
-                                USB_REQ_GET_DESCRIPTOR,
-                                (USB_DT_STRING shl 8) or 0, 0, languages, 256, 0
-                            )
-                            if (result1 >= 0) {
-                                XLogger.d("控制传输成功，传输的字节数：$result1")
-                            } else {
-                                XLogger.d("控制传输失败 :$result1")
-                            }
-                        } finally {
-
-                        }
-
-
-
-                        XLogger.d("info：" +
+                        val info = "info：" +
                                 "\nmanufacturerName:${camera.device.manufacturerName}" +
                                 "\ndeviceId:${camera.device.deviceId}" +
                                 "\ndeviceName:${camera.device.deviceName}" +
@@ -274,57 +262,15 @@ open class UvcCameraFragment : CameraFragment() {
                                 "\nproductId:${camera.device.productId}" +
                                 "\nproductName:${camera.device.productName}" +
                                 "\nversion:${camera.device.version}" +
-                                "\nvendorId:${camera.device.vendorId}" +
-                                "")
-                        val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
-
-
-//                        camera.getUsbControlBlock()?.let {camera->
-//                            val connection = camera.connection
-//                            val languages = ByteArray(256)
-//                            var languageCount = 0
-//                            val result: Int = connection.controlTransfer(
-//                                USB_REQ_STANDARD_DEVICE_GET,  // USB_DIR_IN | USB_TYPE_STANDARD | USB_RECIP_DEVICE
-//                                USB_REQ_GET_DESCRIPTOR,
-//                                (USB_DT_STRING shl 8) or 0, 0, languages, 256, 0
-//                            )
-//                            if (result > 0) {
-//                                languageCount = (result - 2) / 2
-//                            }
-//                            if (languageCount > 0) {
-//
-//                                XLogger.d("info：" +
-//                                        "deviceId:${camera.device.deviceId}\n" +
-//                                        "deviceName:${camera.device.deviceName}\n" +
-//                                        "deviceClass:${camera.device.deviceClass}\n" +
-//                                        "deviceSubclass:${camera.device.deviceSubclass}\n" +
-//                                        "deviceProtocol:${camera.device.deviceProtocol}\n" +
-//
-//                                        "manufacturerName:${camera.device.manufacturerName}\n" +
-//                                        "productName:${camera.device.productName}\n" +
-//                                        "serialNumber:${camera.device.serialNumber}\n" +
-//                                        "vendorId:${camera.device.vendorId}\n" +
-//                                        "version:${camera.device.version}\n" +
-//                                        "productId:${camera.device.productId}\n" +
-//                                        "configurationCount:${camera.device.configurationCount}\n" +
-//                                        "interfaceCount:${camera.device.interfaceCount}\n" +
-//                                        "deviceKeyNameWithSerial:${camera.deviceKeyNameWithSerial}\n" +
-//                                        "devNum:${camera.devNum}\n" +
-//                                        "deviceKey:${camera.deviceKey}\n" +
-//                                        "deviceId:${camera.deviceId}\n" +
-//                                        "deviceKeyWithSerial:${camera.deviceKeyWithSerial}\n" +
-//                                        "")
-//                            }
-//                        }
+                                "\nvendorId:${camera.device.vendorId}"
+                        deviceInfo = info
                     }
                 }
-
             }) {
-                Text("获取信息")
+                Text("info")
             }
+            Text(deviceInfo)
         }
-
-
     }
 
     override fun getCameraRequest(): CameraRequest {
@@ -351,11 +297,9 @@ open class UvcCameraFragment : CameraFragment() {
 
         //三星的 1920* 1080 30fps
         //3840*2880 16FPS
-
-
         val request = CameraRequest.Builder()
-            .setPreviewWidth(1920) // camera preview width
-            .setPreviewHeight(1080) // camera preview height
+//            .setPreviewWidth(1920) // camera preview width
+//            .setPreviewHeight(1080) // camera preview height
 //            .setPreviewWidth(720) // camera preview width
 //            .setPreviewHeight(480) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
@@ -403,7 +347,34 @@ open class UvcCameraFragment : CameraFragment() {
 
     @Composable
     fun Filters2() {
+        XLogger.d("Filters2 刷新")
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+
+        val focusValue = remember { mutableFloatStateOf(cameraUIState.focus) }
+        SliderView(
+            name = "Focus",
+            range = cameraUIState.focusMin..cameraUIState.focusMax,
+            sliderValue = focusValue,
+            onValueChange = { progress ->
+                focusValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setFocus(progress.toInt())
+            }
+        )
+
+
+
+        // TODO：无作用
+        val exposureValue = remember { mutableFloatStateOf(cameraUIState.exposure) }
+        SliderView(
+            name = "Exposure",
+            range = cameraUIState.exposureMin..cameraUIState.exposureMax,
+            sliderValue = exposureValue,
+            onValueChange = { progress ->
+                exposureValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setExposure(progress.toInt())
+            }
+        )
+
         val contrastSliderValue = remember { mutableFloatStateOf(cameraUIState.contrast) }
         SliderView(
             name = "Contrast",
@@ -427,7 +398,7 @@ open class UvcCameraFragment : CameraFragment() {
             }
         )
 
-
+        // TODO：无作用
         val sharpnessSliderValue = remember { mutableFloatStateOf(cameraUIState.sharpness) }
         SliderView(
             name = "Sharpness",
@@ -754,7 +725,7 @@ open class UvcCameraFragment : CameraFragment() {
                 camera?.apply {
 //                    camera.sendCameraCommand()
 
-                    setAutoFocus(true)
+                    setAutoFocus(false)//画面不晃动
                     setAutoWhiteBalance(true)
 
                     val autoWhiteBalance = getAutoWhiteBalance()?:true
@@ -783,6 +754,12 @@ open class UvcCameraFragment : CameraFragment() {
                     val zoom = getZoom()?.toFloat()?:1f
                     val zoomMax = getZoomMax()?.toFloat()?:1f
                     val zoomMin = getZoomMin()?.toFloat()?:1f
+                    val exposure = getExposure()?.toFloat()?:1f
+                    val exposureMax = getExposureMax()?.toFloat()?:1f
+                    val exposureMin = getExposureMin()?.toFloat()?:1f
+                    val focus = getFocus()?.toFloat()?:1f
+                    val focusMax = getFocusMax()?.toFloat()?:1f
+                    val focusMin = getFocusMin()?.toFloat()?:1f
 
                     val uiState = UvcCameraUIState(
                         autoWhiteBalance = autoWhiteBalance,
@@ -810,11 +787,17 @@ open class UvcCameraFragment : CameraFragment() {
                         gainMin = gainMin,
                         gamma = gamma,
                         gammaMax = gammaMax,
-                        gammaMin = gammaMin
+                        gammaMin = gammaMin,
+                        exposureMax = exposureMax,
+                        exposureMin = exposureMin,
+                        exposure = exposure,
+                        focusMax = focusMax,
+                        focusMin = focusMin,
+                        focus = focus
                     )
+
+                    XLogger.d("参数:${uiState}")
                     mViewModel.updateParams(state = uiState)
-
-
 
                     val allPreviewSize = getAllPreviewSizes()
                     val maxResolution = allPreviewSize.maxByOrNull { it.width * it.height }
@@ -835,14 +818,14 @@ open class UvcCameraFragment : CameraFragment() {
 //                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             mLifecycleOwner.launch(Dispatchers.IO) {
                                 data?.let {
-//                                    mViewBinding.imageView.updatePreviewFrame(
-//                                        data,
-//                                        width,
-//                                        height
-//                                    )
-//                                    //省点模式
-//                                    mViewBinding.imageView.requestRender()
-//                                    return@launch
+                                    mViewBinding.imageView.updatePreviewFrame(
+                                        data,
+                                        width,
+                                        height
+                                    )
+                                    //省点模式
+                                    mViewBinding.imageView.requestRender()
+                                    return@launch
 
 
 //                                    val newData = ByteArray(width *height * 3 / 2) // 足够大的缓冲区

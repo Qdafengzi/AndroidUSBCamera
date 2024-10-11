@@ -536,6 +536,14 @@ public class UVCCamera {
     	}
     }
 
+	public synchronized int getFocusMax() {
+		return mFocusMax;
+	}
+
+	public synchronized int getFocusMin() {
+		return mFocusMin;
+	}
+
 //================================================================================
 	public synchronized void setAutoWhiteBlance(final boolean autoWhiteBlance) {
     	if (mNativePtr != 0) {
@@ -592,6 +600,54 @@ public class UVCCamera {
     	}
     }
 //================================================================================
+	/**
+	 * 曝光
+	 * @param exposure 曝光值
+	 */
+	public synchronized void setExposure(int exposure){
+		if (mNativePtr != 0) {
+			final float range = Math.abs(mExposureMax - mExposureMin);
+			if (range > 0)
+				nativeSetExposure(mNativePtr, (int)(exposure / 100.f * range) + mExposureMin);
+		}
+	}
+
+
+	public synchronized int getExposure(final int exposure_abs) {
+		int result = 0;
+		if (mNativePtr != 0) {
+			nativeUpdateExposureLimit(mNativePtr);
+			final float range = Math.abs(mExposureMax - mExposureMin);
+			if (range > 0) {
+				result = (int)((exposure_abs - mExposureMin) * 100.f / range);
+			}
+		}
+		return result;
+	}
+
+
+	public synchronized int getExposure() {
+		return getExposure(nativeGetExposure(mNativePtr));
+	}
+
+	public synchronized void resetExposure() {
+		if (mNativePtr != 0) {
+			nativeSetExposure(mNativePtr, mExposureDef);
+		}
+	}
+
+
+	public synchronized int getExposureMax() {
+		return mExposureMax;
+	}
+
+	public synchronized int getExposureMin() {
+		return mExposureMin;
+	}
+
+	//================================================================================
+
+
     /**
      * @param brightness [%]
      */
@@ -1016,8 +1072,9 @@ public class UVCCamera {
         		// サポートしている機能フラグを取得
     			if (mControlSupports == 0)
     				mControlSupports = nativeGetCtrlSupports(mNativePtr);
-    			if (mProcSupports == 0)
+    			if (mProcSupports == 0){
     				mProcSupports = nativeGetProcSupports(mNativePtr);
+				}
     	    	// 設定値を取得
     	    	if ((mControlSupports != 0) && (mProcSupports != 0)) {
 	    	    	nativeUpdateBrightnessLimit(mNativePtr);
@@ -1030,10 +1087,13 @@ public class UVCCamera {
 	    	    	nativeUpdateZoomLimit(mNativePtr);
 	    	    	nativeUpdateWhiteBlanceLimit(mNativePtr);
 	    	    	nativeUpdateFocusLimit(mNativePtr);
+					nativeUpdateExposureLimit(mNativePtr);
+
     	    	}
-    	    	if (false) {
+    	    	if (DEBUG) {
 					dumpControls(mControlSupports);
 					dumpProc(mProcSupports);
+					XLogWrapper.v(TAG, String.format("Exposure:min=%d,max=%d,def=%d", mExposureMin, mExposureMax, mExposureDef));
 					XLogWrapper.v(TAG, String.format("Brightness:min=%d,max=%d,def=%d", mBrightnessMin, mBrightnessMax, mBrightnessDef));
 					XLogWrapper.v(TAG, String.format("Contrast:min=%d,max=%d,def=%d", mContrastMin, mContrastMax, mContrastDef));
 					XLogWrapper.v(TAG, String.format("Sharpness:min=%d,max=%d,def=%d", mSharpnessMin, mSharpnessMax, mSharpnessDef));
