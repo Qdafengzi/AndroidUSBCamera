@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -30,7 +30,7 @@ class EffectSaturation(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        saturationLocation = GLES20.glGetUniformLocation(mProgram, "saturation")
+        saturationLocation = GLES30.glGetUniformLocation(mProgram, "saturation")
     }
 
     override fun beforeDraw() {
@@ -41,7 +41,7 @@ class EffectSaturation(context: Context) : AbstractEffect(context) {
 
     fun setSaturation(saturation: Float) {
         this.saturation = saturation
-        GLES20.glUniform1f(saturationLocation,saturation)
+        GLES30.glUniform1f(saturationLocation,saturation)
         checkGlError("setSaturation")
     }
 }

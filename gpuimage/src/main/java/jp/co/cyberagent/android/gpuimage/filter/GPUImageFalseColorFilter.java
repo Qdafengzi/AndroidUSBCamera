@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageFalseColorFilter extends GPUImageFilter {
     public static final String FALSECOLOR_FRAGMENT_SHADER = "" +
@@ -61,8 +61,8 @@ public class GPUImageFalseColorFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        firstColorLocation = GLES20.glGetUniformLocation(getProgram(), "firstColor");
-        secondColorLocation = GLES20.glGetUniformLocation(getProgram(), "secondColor");
+        firstColorLocation = GLES30.glGetUniformLocation(getProgram(), "firstColor");
+        secondColorLocation = GLES30.glGetUniformLocation(getProgram(), "secondColor");
     }
 
     @Override

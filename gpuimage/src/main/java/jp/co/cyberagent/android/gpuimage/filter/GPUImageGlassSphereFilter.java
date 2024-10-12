@@ -17,7 +17,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.graphics.PointF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageGlassSphereFilter extends GPUImageFilter {
     public static final String SPHERE_FRAGMENT_SHADER = "" +
@@ -84,10 +84,10 @@ public class GPUImageGlassSphereFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        centerLocation = GLES20.glGetUniformLocation(getProgram(), "center");
-        radiusLocation = GLES20.glGetUniformLocation(getProgram(), "radius");
-        aspectRatioLocation = GLES20.glGetUniformLocation(getProgram(), "aspectRatio");
-        refractiveIndexLocation = GLES20.glGetUniformLocation(getProgram(), "refractiveIndex");
+        centerLocation = GLES30.glGetUniformLocation(getProgram(), "center");
+        radiusLocation = GLES30.glGetUniformLocation(getProgram(), "radius");
+        aspectRatioLocation = GLES30.glGetUniformLocation(getProgram(), "aspectRatio");
+        refractiveIndexLocation = GLES30.glGetUniformLocation(getProgram(), "refractiveIndex");
     }
 
     @Override

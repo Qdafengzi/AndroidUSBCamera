@@ -17,7 +17,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.graphics.PointF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Creates a swirl distortion on the image.
@@ -72,9 +72,9 @@ public class GPUImageSwirlFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        angleLocation = GLES20.glGetUniformLocation(getProgram(), "angle");
-        radiusLocation = GLES20.glGetUniformLocation(getProgram(), "radius");
-        centerLocation = GLES20.glGetUniformLocation(getProgram(), "center");
+        angleLocation = GLES30.glGetUniformLocation(getProgram(), "angle");
+        radiusLocation = GLES30.glGetUniformLocation(getProgram(), "radius");
+        centerLocation = GLES30.glGetUniformLocation(getProgram(), "center");
     }
 
     @Override

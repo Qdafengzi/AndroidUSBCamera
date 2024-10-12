@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Applies a ColorMatrix to the image.
@@ -61,8 +61,8 @@ public class GPUImageColorMatrixFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        colorMatrixLocation = GLES20.glGetUniformLocation(getProgram(), "colorMatrix");
-        intensityLocation = GLES20.glGetUniformLocation(getProgram(), "intensity");
+        colorMatrixLocation = GLES30.glGetUniformLocation(getProgram(), "colorMatrix");
+        intensityLocation = GLES30.glGetUniformLocation(getProgram(), "intensity");
     }
 
     @Override

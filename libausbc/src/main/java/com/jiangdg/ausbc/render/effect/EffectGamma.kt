@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -27,18 +27,18 @@ class EffectGamma(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        gammaLocation = GLES20.glGetUniformLocation(mProgram, "gamma")
+        gammaLocation = GLES30.glGetUniformLocation(mProgram, "gamma")
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
-        GLES20.glUseProgram(mProgram)
+        GLES30.glUseProgram(mProgram)
         setGamma(gamma)
     }
 
     fun setGamma(gamma: Float) {
         this.gamma = gamma
-        GLES20.glUniform1f(gammaLocation, gamma)
+        GLES30.glUniform1f(gammaLocation, gamma)
         checkGlError("glUniform1f gamma")
     }
 

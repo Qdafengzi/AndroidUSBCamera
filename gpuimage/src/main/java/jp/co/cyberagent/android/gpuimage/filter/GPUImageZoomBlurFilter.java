@@ -1,7 +1,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.graphics.PointF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageZoomBlurFilter extends GPUImageFilter {
     public static final String ZOOM_BLUR_FRAGMENT_SHADER = "" +
@@ -48,8 +48,8 @@ public class GPUImageZoomBlurFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        blurCenterLocation = GLES20.glGetUniformLocation(getProgram(), "blurCenter");
-        blurSizeLocation = GLES20.glGetUniformLocation(getProgram(), "blurSize");
+        blurCenterLocation = GLES30.glGetUniformLocation(getProgram(), "blurCenter");
+        blurSizeLocation = GLES30.glGetUniformLocation(getProgram(), "blurSize");
     }
 
     @Override

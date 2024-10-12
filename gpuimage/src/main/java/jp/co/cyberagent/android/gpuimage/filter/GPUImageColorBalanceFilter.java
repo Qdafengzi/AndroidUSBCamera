@@ -1,6 +1,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
+import android.opengl.GLES30;
 
 /**
  * Created by edward_chiang on 13/10/16.
@@ -160,10 +161,10 @@ public class GPUImageColorBalanceFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        shadowsLocation = GLES20.glGetUniformLocation(getProgram(), "shadowsShift");
-        midtonesLocation = GLES20.glGetUniformLocation(getProgram(), "midtonesShift");
-        highlightsLocation = GLES20.glGetUniformLocation(getProgram(), "highlightsShift");
-        preserveLuminosityLocation = GLES20.glGetUniformLocation(getProgram(), "preserveLuminosity");
+        shadowsLocation = GLES30.glGetUniformLocation(getProgram(), "shadowsShift");
+        midtonesLocation = GLES30.glGetUniformLocation(getProgram(), "midtonesShift");
+        highlightsLocation = GLES30.glGetUniformLocation(getProgram(), "highlightsShift");
+        preserveLuminosityLocation = GLES30.glGetUniformLocation(getProgram(), "preserveLuminosity");
     }
 
     @Override

@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImage3x3TextureSamplingFilter extends GPUImageFilter {
     public static final String THREE_X_THREE_TEXTURE_SAMPLING_VERTEX_SHADER = "" +
@@ -79,8 +79,8 @@ public class GPUImage3x3TextureSamplingFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        uniformTexelWidthLocation = GLES20.glGetUniformLocation(getProgram(), "texelWidth");
-        uniformTexelHeightLocation = GLES20.glGetUniformLocation(getProgram(), "texelHeight");
+        uniformTexelWidthLocation = GLES30.glGetUniformLocation(getProgram(), "texelWidth");
+        uniformTexelHeightLocation = GLES30.glGetUniformLocation(getProgram(), "texelHeight");
     }
 
     @Override

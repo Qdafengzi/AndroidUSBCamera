@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -22,8 +22,8 @@ class EffectWhiteBalance(context: Context) : AbstractEffect(context) {
         this.tint = 0.0f
         this.temperature = 5500f
 
-        temperatureLocation = GLES20.glGetUniformLocation(mProgram, "temperature")
-        tintLocation = GLES20.glGetUniformLocation(mProgram, "tint")
+        temperatureLocation = GLES30.glGetUniformLocation(mProgram, "temperature")
+        tintLocation = GLES30.glGetUniformLocation(mProgram, "tint")
     }
 
     override fun getId(): Int = ID
@@ -43,7 +43,7 @@ class EffectWhiteBalance(context: Context) : AbstractEffect(context) {
 
     fun setTemperature(temperature: Float) {
         this.temperature = temperature
-        GLES20.glUniform1f(
+        GLES30.glUniform1f(
             temperatureLocation,
             if (this.temperature < 5000) (0.0004 * (this.temperature - 5000.0)).toFloat() else (0.00006 * (this.temperature - 5000.0)).toFloat()
         )
@@ -52,7 +52,7 @@ class EffectWhiteBalance(context: Context) : AbstractEffect(context) {
 
     fun setTint(tint: Float) {
         this.tint = tint
-        GLES20.glUniform1f(tintLocation, (this.tint / 100.0).toFloat())
+        GLES30.glUniform1f(tintLocation, (this.tint / 100.0).toFloat())
         checkGlError("setTint")
     }
 }

@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -22,14 +22,14 @@ class EffectCrop(ctx: Context) : AbstractEffect(ctx) {
 
     override fun init() {
         super.init()
-        uAspectRatioLocation = GLES20.glGetUniformLocation(mProgram, "uAspectRatio")
+        uAspectRatioLocation = GLES30.glGetUniformLocation(mProgram, "uAspectRatio")
     }
 
     override fun beforeDraw() {
         // 在绘制之前设置裁切比例uniform
         super.beforeDraw()
-        GLES20.glUseProgram(mProgram)
-        GLES20.glUniform1f(uAspectRatioLocation, aspectRatio)
+        GLES30.glUseProgram(mProgram)
+        GLES30.glUniform1f(uAspectRatioLocation, aspectRatio)
         checkGlError("aspectRatio")
     }
 

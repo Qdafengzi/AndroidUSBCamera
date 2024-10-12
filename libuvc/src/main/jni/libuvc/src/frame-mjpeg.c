@@ -457,6 +457,17 @@ static inline unsigned char sat(int i) {
 	return (unsigned char) (i >= 255 ? 255 : (i < 0 ? 0 : i));
 }
 
+
+// 将宏转换为内联函数
+static inline void YCbCr_YUYV_2_2(const uint8_t* YCbCr, uint8_t* yuyv) {
+    // YCbCr 中每两个像素共享一个 Cb 和一个 Cr
+    // 每个像素的格式：Y0, Cb, Y1, Cr
+    yuyv[0] = YCbCr[0];                         // Y0
+    yuyv[1] = YCbCr[1];                         // U (Cb)
+    yuyv[2] = YCbCr[2];                         // Y1
+    yuyv[3] = YCbCr[3];                         // V (Cr)
+}
+
 #define YCbCr_YUYV_2(YCbCr, yuyv) \
 	{ \
 		*(yuyv++) = *(YCbCr+0); \
@@ -553,6 +564,82 @@ fail:
 
 
 uvc_error_t uvc_mjpeg2yuyv2(uvc_frame_t *in, uvc_frame_t *out) {
+    out->actual_bytes = 0; // XXX
+    if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
+        return UVC_ERROR_INVALID_PARAM;
+
+    if (uvc_ensure_frame_size(out, in->width * in->height * 2) < 0)
+        return UVC_ERROR_NO_MEM;
+
+    size_t lines_read = 0;
+    int i, j;
+    int num_scanlines;
+    uint8_t *yuyv, *ycbcr;
+
+    out->width = in->width;
+    out->height = in->height;
+    out->frame_format = UVC_FRAME_FORMAT_YUYV;
+    out->step = in->width * 2;
+    out->sequence = in->sequence;
+    out->capture_time = in->capture_time;
+    out->source = in->source;
+
+    struct jpeg_decompress_struct dinfo;
+    struct error_mgr jerr;
+    dinfo.err = jpeg_std_error(&jerr.super);
+    jerr.super.error_exit = _error_exit;
+
+    if (setjmp(jerr.jmp)) {
+        goto fail;
+    }
+
+    jpeg_create_decompress(&dinfo);
+    jpeg_mem_src(&dinfo, in->data, in->actual_bytes);
+    jpeg_read_header(&dinfo, TRUE);
+
+    if (dinfo.dc_huff_tbl_ptrs[0] == NULL) {
+        insert_huff_tables(&dinfo);
+    }
+
+    dinfo.out_color_space = JCS_YCbCr;
+    dinfo.dct_method = JDCT_IFAST;
+
+    jpeg_start_decompress(&dinfo);
+    const int row_stride = dinfo.output_width * dinfo.output_components;
+
+    JSAMPARRAY buffer = (*dinfo.mem->alloc_sarray)((j_common_ptr)&dinfo, JPOOL_IMAGE, row_stride, MAX_READLINE);
+
+    uint8_t *data = out->data;
+    const int out_step = out->step;
+
+    if (LIKELY(dinfo.output_height == out->height)) {
+        while (dinfo.output_scanline < dinfo.output_height) {
+            num_scanlines = jpeg_read_scanlines(&dinfo, buffer, MAX_READLINE);
+            for (j = 0; j < num_scanlines; j++) {
+                yuyv = data + (lines_read + j) * out_step;
+                ycbcr = buffer[j];
+                for (i = 0; i < row_stride; i += 24) {
+                    YCbCr_YUYV_2(ycbcr + i, yuyv);
+                    YCbCr_YUYV_2(ycbcr + i + 6, yuyv);
+                    YCbCr_YUYV_2(ycbcr + i + 12, yuyv);
+                    YCbCr_YUYV_2(ycbcr + i + 18, yuyv);
+                }
+            }
+            lines_read += num_scanlines;
+        }
+        out->actual_bytes = in->width * in->height * 2;
+    }
+
+    jpeg_finish_decompress(&dinfo);
+    jpeg_destroy_decompress(&dinfo);
+    return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER;
+
+    fail:
+    jpeg_destroy_decompress(&dinfo);
+    return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER + 1;
+}
+
+uvc_error_t uvc_mjpeg2yuyv22(uvc_frame_t *in, uvc_frame_t *out) {
     if (in->frame_format != UVC_FRAME_FORMAT_MJPEG) {
         return UVC_ERROR_INVALID_PARAM;
     }

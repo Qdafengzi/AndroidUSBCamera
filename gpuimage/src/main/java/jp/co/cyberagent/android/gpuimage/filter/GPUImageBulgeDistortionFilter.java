@@ -17,7 +17,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.graphics.PointF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageBulgeDistortionFilter extends GPUImageFilter {
     public static final String BULGE_FRAGMENT_SHADER = "" +
@@ -72,10 +72,10 @@ public class GPUImageBulgeDistortionFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        scaleLocation = GLES20.glGetUniformLocation(getProgram(), "scale");
-        radiusLocation = GLES20.glGetUniformLocation(getProgram(), "radius");
-        centerLocation = GLES20.glGetUniformLocation(getProgram(), "center");
-        aspectRatioLocation = GLES20.glGetUniformLocation(getProgram(), "aspectRatio");
+        scaleLocation = GLES30.glGetUniformLocation(getProgram(), "scale");
+        radiusLocation = GLES30.glGetUniformLocation(getProgram(), "radius");
+        centerLocation = GLES30.glGetUniformLocation(getProgram(), "center");
+        aspectRatioLocation = GLES30.glGetUniformLocation(getProgram(), "aspectRatio");
     }
 
     @Override

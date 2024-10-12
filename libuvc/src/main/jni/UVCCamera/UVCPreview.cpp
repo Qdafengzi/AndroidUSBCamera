@@ -624,7 +624,8 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
                         //todo：因为不使用这个渲染 所以可以关闭掉
-						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+//						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+//                        LOGE("帧数据");
 						addCaptureFrame(frame);
 					} else {
 						recycle_frame(frame);

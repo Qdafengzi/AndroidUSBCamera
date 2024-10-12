@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * gamma value ranges from 0.0 to 3.0, with 1.0 as the normal level
@@ -50,7 +50,7 @@ public class GPUImageGammaFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        gammaLocation = GLES20.glGetUniformLocation(getProgram(), "gamma");
+        gammaLocation = GLES30.glGetUniformLocation(getProgram(), "gamma");
     }
 
     @Override

@@ -59,6 +59,7 @@ dependencies {
 
     implementation project(path: ':core')
     implementation 'com.google.firebase:firebase-crashlytics-ktx:18.3.1'
+    implementation project(':libnative')
 
 }
 

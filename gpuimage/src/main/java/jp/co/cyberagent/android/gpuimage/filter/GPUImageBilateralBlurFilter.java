@@ -5,7 +5,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 
 public class GPUImageBilateralBlurFilter extends GPUImageFilter {
@@ -126,8 +126,8 @@ public class GPUImageBilateralBlurFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        disFactorLocation = GLES20.glGetUniformLocation(getProgram(), "distanceNormalizationFactor");
-        singleStepOffsetLocation = GLES20.glGetUniformLocation(getProgram(), "singleStepOffset");
+        disFactorLocation = GLES30.glGetUniformLocation(getProgram(), "distanceNormalizationFactor");
+        singleStepOffsetLocation = GLES30.glGetUniformLocation(getProgram(), "singleStepOffset");
     }
 
     @Override

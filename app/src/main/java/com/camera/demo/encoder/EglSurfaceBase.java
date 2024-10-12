@@ -21,7 +21,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.opengl.EGL14;
 import android.opengl.EGLSurface;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.util.Log;
 
 import java.io.BufferedOutputStream;
@@ -180,8 +180,8 @@ public class EglSurfaceBase {
         int height = getHeight();
         ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
         buf.order(ByteOrder.LITTLE_ENDIAN);
-        GLES20.glReadPixels(0, 0, width, height,
-                GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+        GLES30.glReadPixels(0, 0, width, height,
+                GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buf);
         //GlUtil.checkGlError("glReadPixels");
         buf.rewind();
 
@@ -219,8 +219,8 @@ public class EglSurfaceBase {
         int height = getHeight();
         ByteBuffer buf = ByteBuffer.allocateDirect(width * height * 4);
         buf.order(ByteOrder.LITTLE_ENDIAN);
-        GLES20.glReadPixels(0, 0, width, height,
-                GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf);
+        GLES30.glReadPixels(0, 0, width, height,
+                GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, buf);
         //GlUtil.checkGlError("glReadPixels");
         buf.rewind();
 

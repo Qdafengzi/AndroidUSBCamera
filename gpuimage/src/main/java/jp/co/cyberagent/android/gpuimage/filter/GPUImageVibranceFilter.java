@@ -1,6 +1,6 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageVibranceFilter extends GPUImageFilter {
     public static final String VIBRANCE_FRAGMENT_SHADER = "" +
@@ -24,7 +24,7 @@ public class GPUImageVibranceFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        vibranceLocation = GLES20.glGetUniformLocation(getProgram(), "vibrance");
+        vibranceLocation = GLES30.glGetUniformLocation(getProgram(), "vibrance");
     }
 
     public GPUImageVibranceFilter() {

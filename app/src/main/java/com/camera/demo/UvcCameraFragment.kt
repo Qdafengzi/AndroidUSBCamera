@@ -74,9 +74,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.ByteBuffer
 
-
-
-
 data class UvcCameraUIState(
     val autoWhiteBalance: Boolean = true,
     val autoFocus: Boolean = true,
@@ -227,23 +224,23 @@ open class UvcCameraFragment : CameraFragment() {
     }
 
     override fun getCameraView(): IAspectRatio {
-//        val view = AspectRatioSurfaceView(requireContext())
-//        view.holder.addCallback(object : SurfaceHolder.Callback {
-//            override fun surfaceCreated(holder: SurfaceHolder) {
-//                XLogger.d("AspectRatioSurfaceView------> surfaceCreated")
-//                holder.setFormat(PixelFormat.TRANSPARENT)
-//                drawEmpty(holder)
-//            }
-//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-//                XLogger.d("AspectRatioSurfaceView------> surfaceChanged")
-//            }
-//
-//            override fun surfaceDestroyed(holder: SurfaceHolder) {
-//                XLogger.d("AspectRatioSurfaceView------> surfaceDestroyed")
-//            }
-//        })
-//        return view
-        return AspectRatioSurfaceView(requireContext())
+        val view = AspectRatioSurfaceView(requireContext())
+        view.holder.addCallback(object : SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: SurfaceHolder) {
+                XLogger.d("AspectRatioSurfaceView------> surfaceCreated")
+                holder.setFormat(PixelFormat.TRANSPARENT)
+                drawEmpty(holder)
+            }
+            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                XLogger.d("AspectRatioSurfaceView------> surfaceChanged")
+            }
+
+            override fun surfaceDestroyed(holder: SurfaceHolder) {
+                XLogger.d("AspectRatioSurfaceView------> surfaceDestroyed")
+            }
+        })
+        return view
+//        return AspectRatioSurfaceView(requireContext())
     }
 
     private fun drawEmpty(holder: SurfaceHolder) {
@@ -274,7 +271,7 @@ open class UvcCameraFragment : CameraFragment() {
         mViewBinding.imageView.setDrawVideoListener {
             mGpuImageMovieWriter.drawVideo = true
         }
-        mGpuImageMovieWriter.setFrameRate(24)
+        mGpuImageMovieWriter.setFrameRate(30)
 
         mGpuImageMovieWriter.gpuImageErrorListener =
             GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
@@ -805,9 +802,9 @@ open class UvcCameraFragment : CameraFragment() {
 
                     addPreviewDataCallBack(object : IPreviewDataCallBack {
                         override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
-//                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
+                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             mLifecycleOwner.launch(Dispatchers.IO) {
-                            return@launch
+//                            return@launch
                                 data?.let {
                                     mViewBinding.imageView.updatePreviewFrame(
                                         data,

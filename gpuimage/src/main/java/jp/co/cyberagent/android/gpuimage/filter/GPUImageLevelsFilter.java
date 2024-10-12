@@ -1,6 +1,6 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Created by vashisthg 30/05/14.
@@ -55,11 +55,11 @@ public class GPUImageLevelsFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        minLocation = GLES20.glGetUniformLocation(getProgram(), "levelMinimum");
-        midLocation = GLES20.glGetUniformLocation(getProgram(), "levelMiddle");
-        maxLocation = GLES20.glGetUniformLocation(getProgram(), "levelMaximum");
-        minOutputLocation = GLES20.glGetUniformLocation(getProgram(), "minOutput");
-        maxOutputLocation = GLES20.glGetUniformLocation(getProgram(), "maxOutput");
+        minLocation = GLES30.glGetUniformLocation(getProgram(), "levelMinimum");
+        midLocation = GLES30.glGetUniformLocation(getProgram(), "levelMiddle");
+        maxLocation = GLES30.glGetUniformLocation(getProgram(), "levelMaximum");
+        minOutputLocation = GLES30.glGetUniformLocation(getProgram(), "minOutput");
+        maxOutputLocation = GLES30.glGetUniformLocation(getProgram(), "maxOutput");
     }
 
     @Override

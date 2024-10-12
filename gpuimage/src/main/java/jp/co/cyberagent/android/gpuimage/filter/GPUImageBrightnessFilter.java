@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * brightness value ranges from -1.0 to 1.0, with 0.0 as the normal level
@@ -50,7 +50,7 @@ public class GPUImageBrightnessFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        brightnessLocation = GLES20.glGetUniformLocation(getProgram(), "brightness");
+        brightnessLocation = GLES30.glGetUniformLocation(getProgram(), "brightness");
     }
 
     @Override

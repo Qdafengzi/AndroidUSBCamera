@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 public class GPUImageLuminanceThresholdFilter extends GPUImageFilter {
 
@@ -52,7 +52,7 @@ public class GPUImageLuminanceThresholdFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        uniformThresholdLocation = GLES20.glGetUniformLocation(getProgram(), "threshold");
+        uniformThresholdLocation = GLES30.glGetUniformLocation(getProgram(), "threshold");
     }
 
     @Override

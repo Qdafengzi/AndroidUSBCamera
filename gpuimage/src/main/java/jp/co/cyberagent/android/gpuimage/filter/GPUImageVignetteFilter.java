@@ -17,7 +17,7 @@
 package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.graphics.PointF;
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Performs a vignetting effect, fading out the image at the edges
@@ -74,10 +74,10 @@ public class GPUImageVignetteFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        vignetteCenterLocation = GLES20.glGetUniformLocation(getProgram(), "vignetteCenter");
-        vignetteColorLocation = GLES20.glGetUniformLocation(getProgram(), "vignetteColor");
-        vignetteStartLocation = GLES20.glGetUniformLocation(getProgram(), "vignetteStart");
-        vignetteEndLocation = GLES20.glGetUniformLocation(getProgram(), "vignetteEnd");
+        vignetteCenterLocation = GLES30.glGetUniformLocation(getProgram(), "vignetteCenter");
+        vignetteColorLocation = GLES30.glGetUniformLocation(getProgram(), "vignetteColor");
+        vignetteStartLocation = GLES30.glGetUniformLocation(getProgram(), "vignetteStart");
+        vignetteEndLocation = GLES30.glGetUniformLocation(getProgram(), "vignetteEnd");
     }
 
     @Override

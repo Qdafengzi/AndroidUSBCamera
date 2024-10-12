@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Selectively replaces a color in the first image with the second image
@@ -65,9 +65,9 @@ public class GPUImageChromaKeyBlendFilter extends GPUImageTwoInputFilter {
     @Override
     public void onInit() {
         super.onInit();
-        thresholdSensitivityLocation = GLES20.glGetUniformLocation(getProgram(), "thresholdSensitivity");
-        smoothingLocation = GLES20.glGetUniformLocation(getProgram(), "smoothing");
-        colorToReplaceLocation = GLES20.glGetUniformLocation(getProgram(), "colorToReplace");
+        thresholdSensitivityLocation = GLES30.glGetUniformLocation(getProgram(), "thresholdSensitivity");
+        smoothingLocation = GLES30.glGetUniformLocation(getProgram(), "smoothing");
+        colorToReplaceLocation = GLES30.glGetUniformLocation(getProgram(), "colorToReplace");
     }
 
     @Override

@@ -5,7 +5,7 @@
 
 
 JNIEXPORT void JNICALL
-Java_jp_co_cyberagent_android_gpuimage_GPUImageNativeLibrary_YUVtoRBGA(JNIEnv *env, jobject obj,
+Java_jp_co_cyberagent_android_gpuimage_GPUImageNativeLibrary_YUVtoRBGA_old(JNIEnv *env, jobject obj,
                                                                        jbyteArray yuv420sp,
                                                                        jint width, jint height,
                                                                        jintArray rgbOut) {
@@ -62,6 +62,55 @@ Java_jp_co_cyberagent_android_gpuimage_GPUImageNativeLibrary_YUVtoRBGA(JNIEnv *e
     (*env)->ReleasePrimitiveArrayCritical(env, rgbOut, rgbData, 0);
     (*env)->ReleasePrimitiveArrayCritical(env, yuv420sp, yuv, 0);
 }
+
+JNIEXPORT void JNICALL
+Java_jp_co_cyberagent_android_gpuimage_GPUImageNativeLibrary_YUVtoRBGA(JNIEnv *env, jobject obj,
+                                                                       jbyteArray yuv420sp,
+                                                                       jint width, jint height,
+                                                                       jintArray rgbOut) {
+    int sz = width * height;
+    int w = width;
+    int h = height;
+
+    jint *rgbData = (jint *)(*env)->GetPrimitiveArrayCritical(env, rgbOut, 0);
+    jbyte *yuv = (jbyte *)(*env)->GetPrimitiveArrayCritical(env, yuv420sp, 0);
+
+    const int Y_SHIFT = 16;
+    const int CB_SHIFT = 128;
+    const int CR_SHIFT = 128;
+
+    int i, j;
+    for (j = 0; j < h; j++) {
+        int pixPtr = j * w;
+        int jDiv2 = j >> 1;
+        for (i = 0; i < w; i++) {
+            int Y = yuv[pixPtr] & 0xff;
+            int Cb = 0, Cr = 0;
+
+            if ((i & 1) == 0) {
+                int cOff = sz + jDiv2 * w + (i >> 1) * 2;
+                Cb = (yuv[cOff] & 0xff) - CB_SHIFT;
+                Cr = (yuv[cOff + 1] & 0xff) - CR_SHIFT;
+            }
+
+            // YUV to RGB conversion
+            int R = Y + (1.402 * Cr);
+            int G = Y - (0.344136 * Cb) - (0.714136 * Cr);
+            int B = Y + (1.772 * Cb);
+
+            // Clamp RGB values to [0, 255]
+            R = (R < 0) ? 0 : (R > 255) ? 255 : R;
+            G = (G < 0) ? 0 : (G > 255) ? 255 : G;
+            B = (B < 0) ? 0 : (B > 255) ? 255 : B;
+
+            rgbData[pixPtr++] = 0xff000000 | (R << 16) | (G << 8) | B;
+        }
+    }
+
+    (*env)->ReleasePrimitiveArrayCritical(env, rgbOut, rgbData, 0);
+    (*env)->ReleasePrimitiveArrayCritical(env, yuv420sp, yuv, 0);
+}
+
 
 JNIEXPORT void JNICALL
 Java_jp_co_cyberagent_android_gpuimage_GPUImageNativeLibrary_YUVtoARBG(JNIEnv *env, jobject obj,

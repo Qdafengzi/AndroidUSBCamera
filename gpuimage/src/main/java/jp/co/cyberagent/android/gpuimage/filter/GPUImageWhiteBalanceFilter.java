@@ -16,7 +16,7 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
-import android.opengl.GLES20;
+import android.opengl.GLES30;
 
 /**
  * Adjusts the white balance of incoming image. <br>
@@ -71,8 +71,8 @@ public class GPUImageWhiteBalanceFilter extends GPUImageFilter {
     @Override
     public void onInit() {
         super.onInit();
-        temperatureLocation = GLES20.glGetUniformLocation(getProgram(), "temperature");
-        tintLocation = GLES20.glGetUniformLocation(getProgram(), "tint");
+        temperatureLocation = GLES30.glGetUniformLocation(getProgram(), "temperature");
+        tintLocation = GLES30.glGetUniformLocation(getProgram(), "tint");
     }
 
     @Override
