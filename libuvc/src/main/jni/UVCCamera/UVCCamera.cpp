@@ -38,10 +38,10 @@
 //**********************************************************************
 //
 //**********************************************************************
-#include <stdlib.h>
+#include <cstdlib>
 #include <linux/time.h>
 #include <unistd.h>
-#include <string.h>
+#include <cstring>
 #include "UVCCamera.h"
 #include "Parameters.h"
 #include "libuvc_internal.h"

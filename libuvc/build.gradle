@@ -30,6 +30,12 @@ android {
         }
     }
 
+	externalNativeBuild {
+		ndkBuild {
+			path file('src/main/jni/Android.mk')
+		}
+	}
+
 	namespace "com.jiangdg"
 	ndkVersion rootProject.ext.ndkVersion
 }
@@ -37,7 +43,7 @@ android {
 //tasks.withType(JavaCompile) {
 //	compileTask -> compileTask.dependsOn ndkBuild
 //}
-//
+
 //String getNdkBuildPath() {
 //	def ndkBuildingDir = System.getenv("NDK_HOME")
 //	if (ndkBuildingDir==null || ndkBuildingDir.isEmpty()) {
@@ -53,16 +59,23 @@ android {
 //	}
 //	return ndkBuildPath
 //}
+
+//def getNdkBuildPath1() {
+//	def ndkDir = android.ndkDirectory
+//	def ndkBuildPath = new File(ndkDir, Os.isFamily(Os.FAMILY_WINDOWS) ? "ndk-build.cmd" : "ndk-build")
+//	return ndkBuildPath.absolutePath
+//}
 //
 //task ndkBuild(type: Exec, description: 'Compile JNI source via NDK') {
 //	println('executing ndkBuild')
-//	def ndkBuildPath = getNdkBuildPath();
+//	def ndkBuildPath = getNdkBuildPath1();
+//	print("path:${ndkBuildPath}")
 //	commandLine ndkBuildPath, '-j8', '-C', file('src/main').absolutePath
 //}
 //
 //task ndkClean(type: Exec, description: 'clean JNI libraries') {
 //	println('executing ndkBuild clean')
-//	def ndkBuildPath = getNdkBuildPath();
+//	def ndkBuildPath = getNdkBuildPath1();
 //	commandLine ndkBuildPath, 'clean', '-C', file('src/main').absolutePath
 //}
 //

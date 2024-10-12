@@ -41,6 +41,7 @@
  */
 #include "libuvc/libuvc.h"
 #include "libuvc/libuvc_internal.h"
+#include "turbojpeg.h"
 #include <jpeglib.h>
 #include <setjmp.h>
 
@@ -465,7 +466,6 @@ static inline unsigned char sat(int i) {
 	}
 
 uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
-
 	out->actual_bytes = 0;	// XXX
 	if (UNLIKELY(in->frame_format != UVC_FRAME_FORMAT_MJPEG))
 		return UVC_ERROR_INVALID_PARAM;
@@ -548,5 +548,85 @@ uvc_error_t uvc_mjpeg2yuyv(uvc_frame_t *in, uvc_frame_t *out) {
 fail:
 	jpeg_destroy_decompress(&dinfo);
 	return lines_read == out->height ? UVC_SUCCESS : UVC_ERROR_OTHER+1;
+}
+
+
+
+uvc_error_t uvc_mjpeg2yuyv2(uvc_frame_t *in, uvc_frame_t *out) {
+    if (in->frame_format != UVC_FRAME_FORMAT_MJPEG) {
+        return UVC_ERROR_INVALID_PARAM;
+    }
+
+    int width = in->width;
+    int height = in->height;
+    // Correct usage of tjBufSizeYUV2 with TJSAMP_420
+    int yuv_size = tjBufSizeYUV2(width, 4, height, TJ_NUMSAMP);
+
+    if (yuv_size <= 0) {
+        LOGE( "Failed to calculate YUV buffer size: %s\n", tjGetErrorStr());
+        return UVC_ERROR_OTHER;
+    }
+
+    if (uvc_ensure_frame_size(out, width * height * 2) < 0) {
+        LOGE( " uvc_ensure_frame_size ");
+        return UVC_ERROR_NO_MEM;
+    }
+
+    tjhandle tj_instance = tjInitDecompress();
+    if (!tj_instance) {
+        LOGE("Failed to initialize TurboJPEG: %s\n", tjGetErrorStr());
+        return UVC_ERROR_OTHER;
+    }
+
+    unsigned char *yuv_buffer = (unsigned char *)malloc(yuv_size);
+    if (!yuv_buffer) {
+        LOGE( "Failed to allocate YUV buffer\n");
+        tjDestroy(tj_instance);
+        return UVC_ERROR_NO_MEM;
+    }
+
+    int ret = tjDecompressToYUV2(tj_instance, in->data, in->actual_bytes, yuv_buffer, width, 4, height, TJFLAG_FASTDCT);
+    if (ret != 0) {
+        LOGE( "TurboJPEG decompression failed: %s\n", tjGetErrorStr());
+        free(yuv_buffer);
+        tjDestroy(tj_instance);
+        return UVC_ERROR_OTHER;
+    }
+
+    unsigned char *y_plane = yuv_buffer;
+    unsigned char *u_plane = yuv_buffer + (width * height);
+    unsigned char *v_plane = u_plane + (width * height / 4);
+    unsigned char *yuyv_data = out->data;
+
+    for (int j = 0; j < height; j++) {
+        for (int i = 0; i < width; i += 2) {
+            int y_index = j * width + i;
+            int uv_index = (j / 2) * (width / 2) + (i / 2);
+
+            unsigned char Y1 = y_plane[y_index];
+            unsigned char Y2 = y_plane[y_index + 1];
+            unsigned char U = u_plane[uv_index];
+            unsigned char V = v_plane[uv_index];
+
+            *yuyv_data++ = Y1;
+            *yuyv_data++ = U;
+            *yuyv_data++ = Y2;
+            *yuyv_data++ = V;
+        }
+    }
+
+    out->actual_bytes = width * height * 2;
+    out->width = width;
+    out->height = height;
+    out->frame_format = UVC_FRAME_FORMAT_YUYV;
+    out->step = width * 2;
+    out->sequence = in->sequence;
+    out->capture_time = in->capture_time;
+    out->source = in->source;
+
+    free(yuv_buffer);
+    tjDestroy(tj_instance);
+
+    return UVC_SUCCESS;
 }
 

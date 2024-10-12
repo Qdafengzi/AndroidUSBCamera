@@ -1368,9 +1368,199 @@ fail:
  * @param flags Stream setup flags, currently undefined. Set this to zero. The lower bit
  * is reserved for backward compatibility.
  */
-uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,
-		uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
-	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 0, flags);
+uvc_error_t uvc_stream_start(uvc_stream_handle_t *strmh,uvc_frame_callback_t *cb, void *user_ptr, uint8_t flags) {
+    /* USB interface we'll be using */
+    const struct libusb_interface *interface;
+    int interface_id;
+    char isochronous;
+    uvc_frame_desc_t *frame_desc;
+    uvc_format_desc_t *format_desc;
+    uvc_stream_ctrl_t *ctrl;
+    uvc_error_t ret;
+    /* Total amount of data per transfer */
+    size_t total_transfer_size = 0;
+    struct libusb_transfer *transfer;
+    int transfer_id;
+
+    ctrl = &strmh->cur_ctrl;
+
+    UVC_ENTER();
+
+    if (strmh->running) {
+        UVC_EXIT(UVC_ERROR_BUSY);
+        return UVC_ERROR_BUSY;
+    }
+
+    strmh->running = 1;
+    strmh->seq = 1;
+    strmh->fid = 0;
+    strmh->pts = 0;
+    strmh->last_scr = 0;
+
+    frame_desc = uvc_find_frame_desc_stream(strmh, ctrl->bFormatIndex, ctrl->bFrameIndex);
+    if (!frame_desc) {
+        ret = UVC_ERROR_INVALID_PARAM;
+        goto fail;
+    }
+    format_desc = frame_desc->parent;
+
+    strmh->frame_format = uvc_frame_format_for_guid(format_desc->guidFormat);
+    if (strmh->frame_format == UVC_FRAME_FORMAT_UNKNOWN) {
+        ret = UVC_ERROR_NOT_SUPPORTED;
+        goto fail;
+    }
+
+    // Get the interface that provides the chosen format and frame configuration
+    interface_id = strmh->stream_if->bInterfaceNumber;
+    interface = &strmh->devh->info->config->interface[interface_id];
+
+    /* A VS interface uses isochronous transfers iff it has multiple altsettings.
+     * (UVC 1.5: 2.4.3. VideoStreaming Interface) */
+    isochronous = interface->num_altsetting > 1;
+
+    if (isochronous) {
+        /* For isochronous streaming, we choose an appropriate altsetting for the endpoint
+         * and set up several transfers */
+        const struct libusb_interface_descriptor *altsetting = 0;
+        const struct libusb_endpoint_descriptor *endpoint = 0;
+        /* The greatest number of bytes that the device might provide, per packet, in this
+         * configuration */
+        size_t config_bytes_per_packet;
+        /* Number of packets per transfer */
+        size_t packets_per_transfer = 0;
+        /* Size of packet transferable from the chosen endpoint */
+        size_t endpoint_bytes_per_packet = 0;
+        /* Index of the altsetting */
+        int alt_idx, ep_idx;
+
+        config_bytes_per_packet = strmh->cur_ctrl.dwMaxPayloadTransferSize;
+
+        /* Go through the altsettings and find one whose packets are at least
+         * as big as our format's maximum per-packet usage. Assume that the
+         * packet sizes are increasing. */
+        for (alt_idx = 0; alt_idx < interface->num_altsetting; alt_idx++) {
+            altsetting = interface->altsetting + alt_idx;
+            endpoint_bytes_per_packet = 0;
+
+            /* Find the endpoint with the number specified in the VS header */
+            for (ep_idx = 0; ep_idx < altsetting->bNumEndpoints; ep_idx++) {
+                endpoint = altsetting->endpoint + ep_idx;
+
+                struct libusb_ss_endpoint_companion_descriptor *ep_comp = 0;
+                libusb_get_ss_endpoint_companion_descriptor(NULL, endpoint, &ep_comp);
+                if (ep_comp)
+                {
+                    endpoint_bytes_per_packet = ep_comp->wBytesPerInterval;
+                    libusb_free_ss_endpoint_companion_descriptor(ep_comp);
+                    break;
+                }
+                else
+                {
+                    if (endpoint->bEndpointAddress == format_desc->parent->bEndpointAddress) {
+                        endpoint_bytes_per_packet = endpoint->wMaxPacketSize;
+                        // wMaxPacketSize: [unused:2 (multiplier-1):3 size:11]
+                        endpoint_bytes_per_packet = (endpoint_bytes_per_packet & 0x07ff) *
+                                                    (((endpoint_bytes_per_packet >> 11) & 3) + 1);
+                        break;
+                    }
+                }
+            }
+
+            if (endpoint_bytes_per_packet >= config_bytes_per_packet) {
+                /* Transfers will be at most one frame long: Divide the maximum frame size
+                 * by the size of the endpoint and round up */
+                packets_per_transfer = (ctrl->dwMaxVideoFrameSize +
+                                        endpoint_bytes_per_packet - 1) / endpoint_bytes_per_packet;
+
+                /* But keep a reasonable limit: Otherwise we start dropping data */
+                if (packets_per_transfer > 32)
+                    packets_per_transfer = 32;
+
+                total_transfer_size = packets_per_transfer * endpoint_bytes_per_packet;
+                break;
+            }
+        }
+
+        /* If we searched through all the altsettings and found nothing usable */
+        if (alt_idx == interface->num_altsetting) {
+            ret = UVC_ERROR_INVALID_MODE;
+            goto fail;
+        }
+
+        /* Select the altsetting */
+        ret = libusb_set_interface_alt_setting(strmh->devh->usb_devh,
+                                               altsetting->bInterfaceNumber,
+                                               altsetting->bAlternateSetting);
+        if (ret != UVC_SUCCESS) {
+            UVC_DEBUG("libusb_set_interface_alt_setting failed");
+            goto fail;
+        }
+
+        /* Set up the transfers */
+        for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
+            transfer = libusb_alloc_transfer(packets_per_transfer);
+            strmh->transfers[transfer_id] = transfer;
+            strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
+
+            libusb_fill_iso_transfer(
+                    transfer, strmh->devh->usb_devh, format_desc->parent->bEndpointAddress,
+                    strmh->transfer_bufs[transfer_id],
+                    total_transfer_size, packets_per_transfer, _uvc_stream_callback, (void*) strmh, 5000);
+
+            libusb_set_iso_packet_lengths(transfer, endpoint_bytes_per_packet);
+        }
+    } else {
+        for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS;
+             ++transfer_id) {
+            transfer = libusb_alloc_transfer(0);
+            strmh->transfers[transfer_id] = transfer;
+            strmh->transfer_bufs[transfer_id] = malloc (
+                    strmh->cur_ctrl.dwMaxPayloadTransferSize );
+            libusb_fill_bulk_transfer ( transfer, strmh->devh->usb_devh,
+                                        format_desc->parent->bEndpointAddress,
+                                        strmh->transfer_bufs[transfer_id],
+                                        strmh->cur_ctrl.dwMaxPayloadTransferSize, _uvc_stream_callback,
+                                        ( void* ) strmh, 5000 );
+        }
+    }
+
+    strmh->user_cb = cb;
+    strmh->user_ptr = user_ptr;
+
+    /* If the user wants it, set up a thread that calls the user's function
+     * with the contents of each frame.
+     */
+    if (cb) {
+        pthread_create(&strmh->cb_thread, NULL, _uvc_user_caller, (void*) strmh);
+    }
+
+    for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS;
+         transfer_id++) {
+        ret = libusb_submit_transfer(strmh->transfers[transfer_id]);
+        if (ret != UVC_SUCCESS) {
+            UVC_DEBUG("libusb_submit_transfer failed: %d",ret);
+            break;
+        }
+    }
+
+    if ( ret != UVC_SUCCESS && transfer_id >= 0 ) {
+        for ( ; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; transfer_id++) {
+            free ( strmh->transfers[transfer_id]->buffer );
+            libusb_free_transfer ( strmh->transfers[transfer_id]);
+            strmh->transfers[transfer_id] = 0;
+        }
+        ret = UVC_SUCCESS;
+    }
+
+    UVC_EXIT(ret);
+    return ret;
+    fail:
+    strmh->running = 0;
+    UVC_EXIT(ret);
+    return ret;
+
+
+//	return uvc_stream_start_bandwidth(strmh, cb, user_ptr, 0, flags);
 }
 
 /** Begin streaming video from the stream into the callback function.

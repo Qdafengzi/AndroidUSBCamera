@@ -2,6 +2,7 @@ package com.camera.demo
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.PixelFormat
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.media.MediaExtractor
@@ -202,8 +203,11 @@ open class UvcCameraFragment : CameraFragment() {
 //            .setPreviewWidth(3840) // camera preview width
 //            .setPreviewHeight(2160) // camera preview height
 
-            .setPreviewWidth(1920) // camera preview width
-            .setPreviewHeight(1080) // camera preview height
+            .setPreviewWidth(3840) // camera preview width
+            .setPreviewHeight(2160) // camera preview height
+
+//            .setPreviewWidth(1920) // camera preview width
+//            .setPreviewHeight(1080) // camera preview height
 
 //            .setPreviewWidth(720) // camera preview width
 //            .setPreviewHeight(480) // camera preview height
@@ -227,8 +231,8 @@ open class UvcCameraFragment : CameraFragment() {
 //        view.holder.addCallback(object : SurfaceHolder.Callback {
 //            override fun surfaceCreated(holder: SurfaceHolder) {
 //                XLogger.d("AspectRatioSurfaceView------> surfaceCreated")
-////                holder.setFormat(PixelFormat.TRANSPARENT)
-////                drawEmpty(holder)
+//                holder.setFormat(PixelFormat.TRANSPARENT)
+//                drawEmpty(holder)
 //            }
 //            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
 //                XLogger.d("AspectRatioSurfaceView------> surfaceChanged")
@@ -239,9 +243,7 @@ open class UvcCameraFragment : CameraFragment() {
 //            }
 //        })
 //        return view
-
-
-        return AspectRatioTextureView(requireContext())
+        return AspectRatioSurfaceView(requireContext())
     }
 
     private fun drawEmpty(holder: SurfaceHolder) {
@@ -272,7 +274,7 @@ open class UvcCameraFragment : CameraFragment() {
         mViewBinding.imageView.setDrawVideoListener {
             mGpuImageMovieWriter.drawVideo = true
         }
-        mGpuImageMovieWriter.setFrameRate(60)
+        mGpuImageMovieWriter.setFrameRate(24)
 
         mGpuImageMovieWriter.gpuImageErrorListener =
             GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
@@ -704,8 +706,6 @@ open class UvcCameraFragment : CameraFragment() {
 //                mViewBinding.imageView.onResume()
                 XLogger.d("mCameraClient 相机打开-----》")
                 camera?.apply {
-//                    camera.sendCameraCommand()
-
                     setAutoFocus(false)//画面不晃动
                     setAutoWhiteBalance(true)
 //                    (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
@@ -787,7 +787,9 @@ open class UvcCameraFragment : CameraFragment() {
                     XLogger.d("参数:${uiState}")
                     mViewModel.updateParams(state = uiState)
 
-                    val allPreviewSize = getAllPreviewSizes()
+                    val allPreviewSize = getAllPreviewSizes().onEach {
+                        XLogger.d("所有的分辨率：${it.width}*${it.height}")
+                    }
                     val maxResolution = allPreviewSize.maxByOrNull { it.width * it.height }
                     XLogger.d("最大的分辨率：${maxResolution?.width} * ${maxResolution?.height}")
                     maxResolution?.let {
@@ -805,6 +807,7 @@ open class UvcCameraFragment : CameraFragment() {
                         override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
 //                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
                             mLifecycleOwner.launch(Dispatchers.IO) {
+                            return@launch
                                 data?.let {
                                     mViewBinding.imageView.updatePreviewFrame(
                                         data,

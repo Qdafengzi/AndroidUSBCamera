@@ -52,6 +52,9 @@ char   *strchr(), *strrchr();
 #endif
 
 
+#include <string.h>
+#include <malloc.h>
+#include <stdlib.h>
 #include "lame.h"
 #include "machine.h"
 #include "encoder.h"
