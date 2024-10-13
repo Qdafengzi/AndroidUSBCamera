@@ -2,7 +2,10 @@ package com.camera.demo
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageFormat
 import android.graphics.PixelFormat
+import android.graphics.YuvImage
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.media.MediaExtractor
@@ -56,7 +59,6 @@ import com.jiangdg.ausbc.camera.CameraUVC
 import com.jiangdg.ausbc.camera.bean.CameraRequest
 import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
-import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
@@ -71,6 +73,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 
@@ -197,25 +200,27 @@ open class UvcCameraFragment : CameraFragment() {
         //三星的 1920* 1080 30fps
         //3840*2880 16FPS
         val request = CameraRequest.Builder()
-//            .setPreviewWidth(3840) // camera preview width
-//            .setPreviewHeight(2160) // camera preview height
+//            .setPreviewWidth(3840)
+//            .setPreviewHeight(2160)
 
-            .setPreviewWidth(3840) // camera preview width
-            .setPreviewHeight(2160) // camera preview height
+            .setPreviewWidth(3840)
+            .setPreviewHeight(2160)
 
-//            .setPreviewWidth(1920) // camera preview width
-//            .setPreviewHeight(1080) // camera preview height
+//            .setPreviewWidth(2592)
+//            .setPreviewHeight(1944)
 
-//            .setPreviewWidth(720) // camera preview width
-//            .setPreviewHeight(480) // camera preview height
+//            .setPreviewWidth(1440)
+//            .setPreviewHeight(1440)
+
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO) // set audio source
 //            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_YUYV) // //todo:YUYV格式的很卡
             .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG) // set preview format, MJPEG recommended
-            .setAspectRatioShow(true) // aspect render,default is true
-            .setCaptureRawImage(true) // capture raw image picture when opengl mode
-            .setRawPreviewData(true)  // preview raw image when opengl mode
+            .setAspectRatioShow(true)
+            .setCaptureRawImage(true)
+
+            .setRawPreviewData(true)
 //            .setDefaultEffect(Effect)
             .create()
 
@@ -802,7 +807,23 @@ open class UvcCameraFragment : CameraFragment() {
 
                     addPreviewDataCallBack(object : IPreviewDataCallBack {
                         override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
-                            XLogger.d("新的数据来了------->${format} ${data?.size} width:${width} height:${height}")
+                            //YUV420 转bitmap
+                            data?.let {
+                                //速度快一些 但不清晰
+                                val bitmap = yuv420ToBitmap(data, width, height)
+                                mViewBinding.imageView.setImage(bitmap)
+                                mViewBinding.imageView.requestRender()
+                                return@let
+                            }
+                            return;
+
+                            data?.let {
+                            val fromata = determineImageFormat(data,width,height)
+                            XLogger.d("新的数据来了------->${fromata}    ------->${format} ${data?.size} width:${width} height:${height}")
+
+                            }
+
+
                             mLifecycleOwner.launch(Dispatchers.IO) {
 //                            return@launch
                                 data?.let {
@@ -845,24 +866,26 @@ open class UvcCameraFragment : CameraFragment() {
 //                                        mViewBinding.imageView.requestRender()
 //                                    }
 
-                                    val newData = cropNV21(data, width, height, 300 / 375f)
-                                    newData?.let {
-                                        logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
-                                        if (mRenderWidth != newData.width) {
-                                            mRenderWidth = newData.width
-                                        }
-                                        if (mRenderHeight != newData.height) {
-                                            mRenderHeight = newData.height
-                                        }
 
-                                        mViewBinding.imageView.updatePreviewFrame(
-                                            newData.data,
-                                            newData.width,
-                                            newData.height
-                                        )
-                                        //省点模式
-                                        mViewBinding.imageView.requestRender()
-                                    }
+                                    //颜色有问题
+//                                    val newData = cropNV21(data, width, height, 300 / 375f)
+//                                    newData?.let {
+//                                        logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
+//                                        if (mRenderWidth != newData.width) {
+//                                            mRenderWidth = newData.width
+//                                        }
+//                                        if (mRenderHeight != newData.height) {
+//                                            mRenderHeight = newData.height
+//                                        }
+//
+//                                        mViewBinding.imageView.updatePreviewFrame(
+//                                            newData.data,
+//                                            newData.width,
+//                                            newData.height
+//                                        )
+//                                        //省点模式
+//                                        mViewBinding.imageView.requestRender()
+//                                    }
                                 }
                             }
                         }
@@ -872,13 +895,8 @@ open class UvcCameraFragment : CameraFragment() {
                             logWithInterval("数据来了：${size} $timestamp")
                         }
                     })
-//                    val min = getBrightnessMin() ?: 0
-//                    val max = getBrightnessMax() ?: 100
-//                    mViewModel.updateZoom(zoom.toFloat())
-//                    mViewModel.updateBrightness(min, max)
 //                XLogger.d("亮度 最大:${max} 最小：${min} zoom:${zoom}")
                 }
-
             }
 
             ICameraStateCallBack.State.CLOSED -> {
@@ -886,9 +904,6 @@ open class UvcCameraFragment : CameraFragment() {
                 XLogger.d("mCameraClient 相机关闭-----》")
 //                camera?.closeCamera()
 //                mViewBinding.imageView.onPause()
-
-
-
             }
 
             ICameraStateCallBack.State.ERROR -> {
@@ -897,6 +912,41 @@ open class UvcCameraFragment : CameraFragment() {
             }
         }
     }
+
+    fun yuv420ToBitmap(yuv420Data: ByteArray, width: Int, height: Int): Bitmap? {
+        // 创建 YuvImage 对象
+        val yuvImage = YuvImage(yuv420Data, ImageFormat.NV21, width, height, null)
+
+        // 使用 ByteArrayOutputStream 将 YuvImage 转换为 Bitmap
+        val outputStream = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, outputStream)
+
+        // 将输出流转换为 Bitmap
+        val bitmapArray = outputStream.toByteArray()
+        return BitmapFactory.decodeByteArray(bitmapArray, 0, bitmapArray.size)
+    }
+
+
+   companion object{
+       fun determineImageFormat(data: ByteArray, width: Int, height: Int): String {
+           val size = data.size
+
+           return if (size == width * height * 4) {
+               "RGBA"
+           } else if (size == width * height * 3) {
+               "RGB"
+           } else if (size == width * height * 2) {
+               "RGB565"
+           } else if (size.toDouble() == width * height * 1.5) {
+               // Check further for NV21/NV12
+               // For NV21 (YUV420SP): VU interleaved format
+               "YUV420 (NV21 or NV12)"
+           } else {
+               "Unknown"
+           }
+       }
+   }
+
 
 
 

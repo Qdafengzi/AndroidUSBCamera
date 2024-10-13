@@ -11,6 +11,10 @@
 6.4K视频困难
 
 
+7.问题解决
+https://zsyyblog.com/d5fcd821.html
+
+
 分辨率问题
 https://github.com/saki4510t/UVCCamera/issues/13
 https://patents.google.com/patent/CN105578008A/zh

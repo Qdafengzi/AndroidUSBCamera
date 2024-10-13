@@ -174,7 +174,7 @@ public class GPUImage {
         } else if (surfaceType == SURFACE_TYPE_TEXTURE_VIEW) {
             glTextureView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
         }
-        renderer.setUpSurfaceTexture(camera, previewCallback);
+//        renderer.setUpSurfaceTexture(camera, previewCallback);
         Rotation rotation = Rotation.NORMAL;
         switch (degrees) {
             case 90:

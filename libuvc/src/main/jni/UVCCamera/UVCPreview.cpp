@@ -547,75 +547,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		LOGI("Streaming...");
 #endif
 		if (frameMode) {
-			// MJPEG mode
-            // 预先分配缓冲区
-//            uint8_t* i420_buffer = nullptr;
-//            uint8_t* abgr_buffer = nullptr;
-//            int prev_width = 0, prev_height = 0;
-//
-//            for ( ; LIKELY(isRunning()) ; ) {
-//                frame_mjpeg = waitPreviewFrame();
-//                if (LIKELY(frame_mjpeg)) {
-//                    int width = frame_mjpeg->width;
-//                    int height = frame_mjpeg->height;
-//
-//                    // 如果分辨率改变，重新分配缓冲区
-//                    if (width != prev_width || height != prev_height) {
-//                        free(i420_buffer);
-//                        free(abgr_buffer);
-//                        i420_buffer = (uint8_t*)malloc(width * height * 3 / 2);
-//                        abgr_buffer = (uint8_t*)malloc(width * height * 4);
-//                        prev_width = width;
-//                        prev_height = height;
-//                    }
-//
-//                    // 将 void* 转换为 const uint8_t*
-//                    const uint8_t* mjpeg_data = static_cast<const uint8_t*>(frame_mjpeg->data);
-//
-//                    // MJPEG 到 I420 的转换
-//                    int result = libyuv::MJPGToI420(
-//                            mjpeg_data, frame_mjpeg->data_bytes,
-//                            i420_buffer, width,
-//                            i420_buffer + width * height, width / 2,
-//                            i420_buffer + width * height * 5 / 4, width / 2,
-//                            width, height,
-//                            width, height
-//                    );
-//
-//                    recycle_frame(frame_mjpeg);
-//
-//                    if (LIKELY(result == 0)) {
-//                        // I420 到 ABGR 的转换
-//                        libyuv::I420ToABGR(
-//                                i420_buffer, width,
-//                                i420_buffer + width * height, width / 2,
-//                                i420_buffer + width * height * 5 / 4, width / 2,
-//                                abgr_buffer, width * 4,
-//                                width, height
-//                        );
-//
-//                        // 创建新的 frame 来存储 ABGR 数据
-//                        uvc_frame_t * abgr_frame = get_frame(width * height * 4);
-//                        if (LIKELY(abgr_frame)) {
-//                            memcpy(abgr_frame->data, abgr_buffer, width * height * 4);
-//                            abgr_frame->width = width;
-//                            abgr_frame->height = height;
-//
-//                            // 使用 draw_preview_one 进行预览
-//                            uvc_frame_t* preview_frame = draw_preview_one(abgr_frame, &mPreviewWindow, nullptr, 4);
-//                            // 添加到捕获帧
-//                            addCaptureFrame(preview_frame);
-//                            // 回收 ABGR 帧
-//                            recycle_frame(abgr_frame);
-//                        }
-//                    }
-//                }
-//            }
-//            // 清理
-//            free(i420_buffer);
-//            free(abgr_buffer);
-
-
+            // MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
 				if (LIKELY(frame_mjpeg)) {
@@ -623,15 +555,16 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
-                        //todo：因为不使用这个渲染 所以可以关闭掉
-//						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 //                        LOGE("帧数据");
+                        //不加上面的转换 是YUYV格式的 加了就是RGBA格式的数据
 						addCaptureFrame(frame);
 					} else {
 						recycle_frame(frame);
 					}
 				}
 			}
+
 		} else {
 			// yuvyv mode
 			for ( ; LIKELY(isRunning()) ; ) {

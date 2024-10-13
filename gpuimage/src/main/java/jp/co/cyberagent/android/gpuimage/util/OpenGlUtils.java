@@ -59,26 +59,28 @@ public class OpenGlUtils {
     }
 
     public static int loadTexture(final IntBuffer data, final int width, final int height, final int usedTexId) {
-        int textures[] = new int[1];
+
+        int[] textures = new int[1];
         if (usedTexId == NO_TEXTURE) {
             GLES30.glGenTextures(1, textures, 0);
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textures[0]);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-            GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA, width, height,
-                    0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, data);
+
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+
+            GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA, width, height, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, data);
         } else {
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, usedTexId);
-            GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, width,
-                    height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, data);
+            GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, width, height, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, data);
             textures[0] = usedTexId;
         }
+        int error = GLES30.glGetError();
+        if (error != GLES30.GL_NO_ERROR) {
+            Log.e("OpenGL", "Texture error: " + error);
+        }
+
         return textures[0];
     }
 

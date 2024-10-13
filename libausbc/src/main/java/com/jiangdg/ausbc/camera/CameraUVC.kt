@@ -35,6 +35,7 @@ import com.jiangdg.ausbc.utils.CameraUtils
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.MediaUtils
 import com.jiangdg.ausbc.utils.Utils
+import com.jiangdg.utils.XLogWrapper
 import com.jiangdg.uvc.IFrameCallback
 import com.jiangdg.uvc.UVCCamera
 import java.io.File
@@ -56,17 +57,11 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
             val data = ByteArray(capacity())
             get(data)
             mCameraRequest?.apply {
-//                XLog.d("哈哈哈哈","预览的尺寸:${data.size}  w:${previewWidth} h:${previewHeight}")
-
                 if (data.size != previewWidth * previewHeight * 3 / 2) {
                     return@IFrameCallback
                 }
 
-
-
                 //下面的代码只是返回预览帧的callback
-                //裁切data
-                //XLog.d("预览要求 ：${previewWidth} ${previewHeight} ${Thread.currentThread().name}")
                 // for preview callback
                 mPreviewDataCbList.forEach { cb ->
                     cb?.onPreviewData(data, previewWidth, previewHeight, IPreviewDataCallBack.DataFormat.NV21)
@@ -80,6 +75,24 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
                 // avoid preview size changed
                 putVideoData(data)
             }
+        }
+    }
+
+    fun determineImageFormat(data: ByteArray, width: Int, height: Int): String {
+        val size = data.size
+
+        return if (size == width * height * 4) {
+            "RGBA"
+        } else if (size == width * height * 3) {
+            "RGB"
+        } else if (size == width * height * 2) {
+            "RGB565"
+        } else if (size.toDouble() == width * height * 1.5) {
+            // Check further for NV21/NV12
+            // For NV21 (YUV420SP): VU interleaved format
+            "YUV420 (NV21 or NV12)"
+        } else {
+            "Unknown"
         }
     }
 
@@ -216,6 +229,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
                     },
                     UVCCamera.DEFAULT_BANDWIDTH
                 )
+
             } catch (e: Exception) {
                 closeCamera()
                 postStateEvent(ICameraStateCallBack.State.ERROR, "err: ${e.localizedMessage}")
@@ -225,7 +239,7 @@ class CameraUVC(ctx: Context, device: UsbDevice) : MultiCameraClient.ICamera(ctx
         }
         // if not opengl render or opengl render with preview callback
         // there should opened
-        if (! isNeedGLESRender || mCameraRequest!!.isRawPreviewData || mCameraRequest!!.isCaptureRawImage) {
+        if (!isNeedGLESRender || mCameraRequest!!.isRawPreviewData || mCameraRequest!!.isCaptureRawImage) {
             mUvcCamera?.setFrameCallback(frameCallBack, UVCCamera.PIXEL_FORMAT_YUV420SP)
         }
         // 3. start preview

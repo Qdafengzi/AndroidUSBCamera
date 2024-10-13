@@ -16,18 +16,17 @@ package jp.co.cyberagent.android.gpuimage;
  * limitations under the License.
  */
 
+import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
+
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.SurfaceTexture;
-import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
-import android.hardware.Camera.Size;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 
 import com.gemlightbox.core.utils.XLogger;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
-import com.jiangdg.natives.YUVUtils;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -44,11 +43,9 @@ import jp.co.cyberagent.android.gpuimage.util.OpenGlUtils;
 import jp.co.cyberagent.android.gpuimage.util.Rotation;
 import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
 
-import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
-
-public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.Renderer, PreviewCallback {
+public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.Renderer {
     private static final int NO_IMAGE = -1;
-    public static final float CUBE[] = {
+    public static final float[] CUBE = {
             -1.0f, -1.0f,
             1.0f, -1.0f,
             -1.0f, 1.0f,
@@ -131,7 +128,7 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
             try {
                 surfaceTexture.updateTexImage();
             } catch (Exception e) {
-                if(!BuildConfig.DEBUG) {
+                if (!BuildConfig.DEBUG) {
                     FirebaseCrashlytics.getInstance().recordException(e);
                 }
             }
@@ -159,93 +156,85 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
         }
     }
 
-    @Override
-    public void onPreviewFrame(final byte[] data, final Camera camera) {
-        if (previewCallback != null) {
-            previewCallback.onPreviewFrame(data, camera);
+    public void onPreviewFrame_new(final byte[] data, final int width, final int height) {
+        if (glRgbBuffer == null || glRgbBuffer.capacity() < width * height) {
+            // Allocate a new IntBuffer if necessary
+            glRgbBuffer = IntBuffer.allocate(width * height);
         }
-        try {
-            final Size previewSize = camera.getParameters().getPreviewSize();
-            onPreviewFrame(data, previewSize.width, previewSize.height);
-        } catch (RuntimeException e) {
-            FirebaseCrashlytics.getInstance().recordException(e);
+
+        // Convert byte[] to IntBuffer
+        glRgbBuffer.clear();  // Clear the buffer before putting new data
+
+        for (int i = 0; i < data.length; i += 4) {
+            int r = data[i] & 0xFF;
+            int g = data[i + 1] & 0xFF;
+            int b = data[i + 2] & 0xFF;
+            int a = data[i + 3] & 0xFF;
+            int rgba = (r << 24) | (g << 16) | (b << 8) | a;
+            glRgbBuffer.put(rgba);
+        }
+
+        glRgbBuffer.position(0);  // Reset buffer position to the beginning
+
+        if (runOnDraw.isEmpty()) {
+            runOnDraw(() -> {
+                glTextureId = OpenGlUtils.loadTexture(glRgbBuffer, width, height, glTextureId);
+
+                if (imageWidth != width || imageHeight != height) {
+                    imageWidth = width;
+                    imageHeight = height;
+                    adjustImageScaling();
+                }
+
+                if (drawVideoListener != null) {
+                    drawVideoListener.runVideoDraw();
+                }
+            });
         }
     }
+
 
     public void onPreviewFrame(final byte[] data, final int width, final int height) {
         if (glRgbBuffer == null) {
             glRgbBuffer = IntBuffer.allocate(width * height);
         }
         if (runOnDraw.isEmpty()) {
-            runOnDraw(new Runnable() {
-                @Override
-                public void run() {
-                    GPUImageNativeLibrary.YUVtoRBGA(data, width, height, glRgbBuffer.array());
-                    glTextureId = OpenGlUtils.loadTexture(glRgbBuffer, width, height, glTextureId);
+            runOnDraw(() -> {
+                GPUImageNativeLibrary.YUVtoRBGA(data, width, height, glRgbBuffer.array());
+                glTextureId = OpenGlUtils.loadTexture(glRgbBuffer, width, height, glTextureId);
 
-                    if (imageWidth != width) {
-                        imageWidth = width;
-                        imageHeight = height;
-                        adjustImageScaling();
-                    }
+                if (imageWidth != width) {
+                    imageWidth = width;
+                    imageHeight = height;
+                    adjustImageScaling();
+                }
 
-                    if (drawVideoListener != null) {
-                        drawVideoListener.runVideoDraw();
-                    }
+                if (drawVideoListener != null) {
+                    drawVideoListener.runVideoDraw();
                 }
             });
         }
     }
 
-    public void setUpSurfaceTexture(final Camera camera, final PreviewCallback previewCallback) {
-        runOnDraw(new Runnable() {
-            @Override
-            public void run() {
-                int[] textures = new int[1];
-                GLES30.glGenTextures(1, textures, 0);
-                GPUImageRenderer.this.previewCallback = previewCallback;
-                surfaceTexture = new SurfaceTexture(textures[0]);
-                try {
-                    camera.setPreviewTexture(surfaceTexture);
-                    camera.setPreviewCallback(GPUImageRenderer.this);
-                    camera.startPreview();
-                } catch (Exception e) {
-                    if(!BuildConfig.DEBUG){
-                        FirebaseCrashlytics.getInstance().recordException(e);
-                    }
-                    e.printStackTrace();
-                }
-            }
-        });
-    }
-
     public void setFilter(final GPUImageFilter filter) {
-        runOnDraw(new Runnable() {
-
-            @Override
-            public void run() {
-                final GPUImageFilter oldFilter = GPUImageRenderer.this.filter;
-                GPUImageRenderer.this.filter = filter;
-                if (oldFilter != null) {
-                    oldFilter.destroy();
-                }
-                GPUImageRenderer.this.filter.ifNeedInit();
-                GLES30.glUseProgram(GPUImageRenderer.this.filter.getProgram());
-                GPUImageRenderer.this.filter.onOutputSizeChanged(outputWidth, outputHeight);
+        runOnDraw(() -> {
+            final GPUImageFilter oldFilter = GPUImageRenderer.this.filter;
+            GPUImageRenderer.this.filter = filter;
+            if (oldFilter != null) {
+                oldFilter.destroy();
             }
+            GPUImageRenderer.this.filter.ifNeedInit();
+            GLES30.glUseProgram(GPUImageRenderer.this.filter.getProgram());
+            GPUImageRenderer.this.filter.onOutputSizeChanged(outputWidth, outputHeight);
         });
     }
 
     public void deleteImage() {
-        runOnDraw(new Runnable() {
-
-            @Override
-            public void run() {
-                GLES30.glDeleteTextures(1, new int[]{
-                        glTextureId
-                }, 0);
-                glTextureId = NO_IMAGE;
-            }
+        runOnDraw(() -> {
+            GLES30.glDeleteTextures(1, new int[]{
+                    glTextureId
+            }, 0);
+            glTextureId = NO_IMAGE;
         });
     }
 
@@ -258,34 +247,27 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
             return;
         }
 
-        runOnDraw(new Runnable() {
+        runOnDraw(() -> {
+            Bitmap resizedBitmap = null;
+            if (bitmap.getWidth() % 2 == 1) {
+                resizedBitmap = Bitmap.createBitmap(bitmap.getWidth() + 1, bitmap.getHeight(), Bitmap.Config.ARGB_8888);
+                Canvas can = new Canvas(resizedBitmap);
+                can.drawARGB(0x00, 0x00, 0x00, 0x00);
+                can.drawBitmap(bitmap, 0, 0, null);
+                addedPadding = 1;
+            } else {
+                addedPadding = 0;
+            }
 
-            @Override
-            public void run() {
-                Bitmap resizedBitmap = null;
-                if (bitmap.getWidth() % 2 == 1) {
-                    resizedBitmap = Bitmap.createBitmap(bitmap.getWidth() + 1, bitmap.getHeight(),
-                            Bitmap.Config.ARGB_8888);
-                    Canvas can = new Canvas(resizedBitmap);
-                    can.drawARGB(0x00, 0x00, 0x00, 0x00);
-                    can.drawBitmap(bitmap, 0, 0, null);
-                    addedPadding = 1;
-                } else {
-                    addedPadding = 0;
-                }
-
-                glTextureId = OpenGlUtils.loadTexture(
-                        resizedBitmap != null ? resizedBitmap : bitmap, glTextureId, recycle);
-                if (resizedBitmap != null) {
-                    resizedBitmap.recycle();
-                }
-                imageWidth = bitmap.getWidth();
-                imageHeight = bitmap.getHeight();
-                adjustImageScaling();
-
-                if (drawVideoListener != null) {
-                    drawVideoListener.runVideoDraw();
-                }
+            glTextureId = OpenGlUtils.loadTexture(resizedBitmap != null ? resizedBitmap : bitmap, glTextureId, recycle);
+            if (resizedBitmap != null) {
+                resizedBitmap.recycle();
+            }
+            imageWidth = bitmap.getWidth();
+            imageHeight = bitmap.getHeight();
+            adjustImageScaling();
+            if (drawVideoListener != null) {
+                drawVideoListener.runVideoDraw();
             }
         });
     }

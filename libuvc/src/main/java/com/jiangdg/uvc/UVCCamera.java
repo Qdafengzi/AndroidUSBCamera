@@ -43,7 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UVCCamera {
-	public static boolean DEBUG = false;	// TODO set false when releasing
+	public static boolean DEBUG = true;	// TODO set false when releasing
 	private static final String TAG = UVCCamera.class.getSimpleName();
 	private static final String DEFAULT_USBFS = "/dev/bus/usb";
 	public static final int FRAME_FORMAT_YUYV = 0;
@@ -369,23 +369,24 @@ public class UVCCamera {
 	}
 
 	public List<Size> getSupportedSize(final int type, final String supportedSize) {
-		final List<Size> result = new ArrayList<Size>();
-		if (!TextUtils.isEmpty(supportedSize))
-		try {
-			final JSONObject json = new JSONObject(supportedSize);
-			final JSONArray formats = json.getJSONArray("formats");
-			final int format_nums = formats.length();
-			for (int i = 0; i < format_nums; i++) {
-				final JSONObject format = formats.getJSONObject(i);
-				if(format.has("type") && format.has("size")) {
-					final int format_type = format.getInt("type");
-					if ((format_type == type) || (type == -1)) {
-						addSize(format, format_type, 0, result);
+		 List<Size> result = new ArrayList<>();
+		if (!TextUtils.isEmpty(supportedSize)){
+			try {
+				JSONObject json = new JSONObject(supportedSize);
+				JSONArray formats = json.getJSONArray("formats");
+				int format_nums = formats.length();
+				for (int i = 0; i < format_nums; i++) {
+					final JSONObject format = formats.getJSONObject(i);
+					if(format.has("type") && format.has("size")) {
+						final int format_type = format.getInt("type");
+						if ((format_type == type) || (type == -1)) {
+							addSize(format, format_type, 0, result);
+						}
 					}
 				}
+			} catch (JSONException e) {
+				XLogWrapper.d(TAG,"get support error:"+e.getMessage());
 			}
-		} catch (final JSONException e) {
-			e.printStackTrace();
 		}
 		return result;
 	}
