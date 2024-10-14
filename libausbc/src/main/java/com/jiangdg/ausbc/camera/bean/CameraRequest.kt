@@ -233,7 +233,7 @@ class CameraRequest private constructor() {
      */
     enum class PreviewFormat {
         FORMAT_MJPEG,
-        FORMAT_YUYV
+        FORMAT_YUYV//比较卡
     }
 
     companion object {

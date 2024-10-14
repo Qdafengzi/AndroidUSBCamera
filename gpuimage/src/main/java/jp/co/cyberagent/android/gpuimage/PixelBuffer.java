@@ -9,6 +9,7 @@
 package jp.co.cyberagent.android.gpuimage;
 
 import android.graphics.Bitmap;
+import android.opengl.EGL14;
 import android.opengl.GLSurfaceView;
 import android.util.Log;
 

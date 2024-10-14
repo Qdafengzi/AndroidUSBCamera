@@ -21,7 +21,7 @@ import android.provider.MediaStore;
 import android.view.Display;
 import android.view.WindowManager;
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
+import com.gemlightbox.core.utils.XLogger;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -61,8 +61,8 @@ public class GPUImage {
      * @param context the context
      */
     public GPUImage(final Context context) {
-        if (!supportsOpenGLES2(context)) {
-            throw new IllegalStateException("OpenGL ES 2.0 is not supported on this phone.");
+        if (!supportsOpenGLES3(context)) {
+            throw new IllegalStateException("OpenGL ES 3.0 is not supported on this phone.");
         }
 
         this.context = context;
@@ -76,12 +76,12 @@ public class GPUImage {
      * @param context the context
      * @return true, if successful
      */
-    private boolean supportsOpenGLES2(final Context context) {
+    private boolean supportsOpenGLES3(final Context context) {
         final ActivityManager activityManager = (ActivityManager)
                 context.getSystemService(Context.ACTIVITY_SERVICE);
         final ConfigurationInfo configurationInfo =
                 activityManager.getDeviceConfigurationInfo();
-        return configurationInfo.reqGlEsVersion >= 0x20000;
+        return configurationInfo.reqGlEsVersion >= 0x30000;
     }
 
     /**
@@ -92,7 +92,7 @@ public class GPUImage {
     public void setGLSurfaceView(final GLSurfaceView view) {
         surfaceType = SURFACE_TYPE_SURFACE_VIEW;
         glSurfaceView = view;
-        glSurfaceView.setEGLContextClientVersion(2);
+        glSurfaceView.setEGLContextClientVersion(3);
         glSurfaceView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         glSurfaceView.getHolder().setFormat(PixelFormat.RGBA_8888);
         glSurfaceView.setRenderer(renderer);
@@ -108,7 +108,7 @@ public class GPUImage {
     public void setGLTextureView(final GLTextureView view) {
         surfaceType = SURFACE_TYPE_TEXTURE_VIEW;
         glTextureView = view;
-        glTextureView.setEGLContextClientVersion(2);
+        glTextureView.setEGLContextClientVersion(3);
         glTextureView.setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         glTextureView.setOpaque(false);
         glTextureView.setRenderer(renderer);
@@ -538,9 +538,6 @@ public class GPUImage {
                             }
                         });
             } catch (FileNotFoundException e) {
-                if(!BuildConfig.DEBUG){
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
                 e.printStackTrace();
             }
         }
@@ -572,9 +569,6 @@ public class GPUImage {
                 }
                 return BitmapFactory.decodeStream(inputStream, null, options);
             } catch (Exception e) {
-                if(!BuildConfig.DEBUG){
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
                 e.printStackTrace();
             }
             return null;
@@ -647,10 +641,7 @@ public class GPUImage {
                         renderer.surfaceChangedWaiter.wait(3000);
                     }
                 } catch (InterruptedException e) {
-                    if(!BuildConfig.DEBUG){
-                        FirebaseCrashlytics.getInstance().recordException(e);
-                    }
-                    e.printStackTrace();
+                    XLogger.e("error:"+e.getMessage());
                 }
             }
             outputWidth = getOutputWidth();
@@ -772,10 +763,7 @@ public class GPUImage {
                     bitmap.recycle();
                 }
             } catch (IOException e) {
-                if(!BuildConfig.DEBUG){
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
-                e.printStackTrace();
+                XLogger.e("error:"+e.getMessage());
             }
             return rotatedBitmap;
         }
@@ -785,5 +773,9 @@ public class GPUImage {
 
     public interface ResponseListener<T> {
         void response(T item);
+    }
+
+    public void imageOnSurfaceChanged(final int startX, final int startY, final int width, final int height){
+        renderer.imageOnSurfaceChanged(startX,startY,width,height);
     }
 }

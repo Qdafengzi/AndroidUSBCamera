@@ -1383,15 +1383,22 @@ uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness) {
 
 	SHORT_TO_SW(sharpness, data);
 
+    //LOGI("set sharpness %d",sharpness );
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_PU_SHARPNESS_CONTROL << 8,
 			devh->info->ctrl_if.processing_unit_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
-	if (LIKELY(ret == sizeof(data)))
-		return UVC_SUCCESS;
-	else
+
+	if (LIKELY(ret == sizeof(data))){
+        //LOGI("set sharpness success");
+        return UVC_SUCCESS;
+    }
+
+	else{
+        //LOGI("set sharpness fail");
 		return ret;
+    }
 }
 
 uvc_error_t uvc_get_gamma(uvc_device_handle_t *devh, uint16_t *gamma,

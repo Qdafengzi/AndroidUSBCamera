@@ -23,6 +23,8 @@ import android.opengl.GLES30;
 import android.opengl.GLUtils;
 import android.util.Log;
 
+import com.gemlightbox.core.utils.XLogger;
+
 import java.nio.IntBuffer;
 
 public class OpenGlUtils {
@@ -33,23 +35,26 @@ public class OpenGlUtils {
     }
 
     public static int loadTexture(final Bitmap img, final int usedTexId, final boolean recycle) {
-        int textures[] = new int[1];
+        int[] textures = new int[1];
         if (usedTexId == NO_TEXTURE) {
             GLES30.glGenTextures(1, textures, 0);
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textures[0]);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D,
-                    GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
-
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
             GLUtils.texImage2D(GLES30.GL_TEXTURE_2D, 0, img, 0);
+            int error = GLES30.glGetError();
+            if (error != GLES30.GL_NO_ERROR) {
+                XLogger.e( "OpenGL Texture error: " + error);
+            }
         } else {
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, usedTexId);
             GLUtils.texSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, img);
+            int error = GLES30.glGetError();
+            if (error != GLES30.GL_NO_ERROR) {
+                XLogger.e( "OpenGL Texture error: " + error);
+            }
             textures[0] = usedTexId;
         }
         if (recycle) {

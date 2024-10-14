@@ -555,7 +555,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
-						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
+						//frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 //                        LOGE("帧数据");
                         //不加上面的转换 是YUYV格式的 加了就是RGBA格式的数据
 						addCaptureFrame(frame);

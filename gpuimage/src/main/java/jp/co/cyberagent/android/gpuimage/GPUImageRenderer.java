@@ -20,13 +20,11 @@ import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.SurfaceTexture;
 import android.hardware.Camera.PreviewCallback;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 
 import com.gemlightbox.core.utils.XLogger;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -57,7 +55,6 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
     public final Object surfaceChangedWaiter = new Object();
 
     private int glTextureId = NO_IMAGE;
-    private SurfaceTexture surfaceTexture = null;
     private final FloatBuffer glCubeBuffer;
     private final FloatBuffer glTextureBuffer;
     private IntBuffer glRgbBuffer;
@@ -105,8 +102,23 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
         filter.ifNeedInit();
     }
 
+
+    public void imageOnSurfaceChanged(final int startX, final int startY, final int width, final int height) {
+        XLogger.d("onSurfaceChanged------->width:" + width + " h" + height);
+        outputWidth = width;
+        outputHeight = height;
+        GLES30.glViewport(startX, startY, width, height);
+        GLES30.glUseProgram(filter.getProgram());
+        filter.onOutputSizeChanged(width, height);
+        adjustImageScaling();
+        synchronized (surfaceChangedWaiter) {
+            surfaceChangedWaiter.notifyAll();
+        }
+    }
+
     @Override
-    public void onSurfaceChanged(final GL10 gl, final int width, final int height) {
+    public void onSurfaceChanged(final GL10 unused, final int width, final int height) {
+        XLogger.d("onSurfaceChanged------->width:"+width+" h"+height);
         outputWidth = width;
         outputHeight = height;
         GLES30.glViewport(0, 0, width, height);
@@ -124,15 +136,6 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
         runAll(runOnDraw);
         filter.onDraw(glTextureId, glCubeBuffer, glTextureBuffer);
         runAll(runOnDrawEnd);
-        if (surfaceTexture != null) {
-            try {
-                surfaceTexture.updateTexImage();
-            } catch (Exception e) {
-                if (!BuildConfig.DEBUG) {
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
-            }
-        }
     }
 
     /**
@@ -231,9 +234,8 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
 
     public void deleteImage() {
         runOnDraw(() -> {
-            GLES30.glDeleteTextures(1, new int[]{
-                    glTextureId
-            }, 0);
+            XLogger.d("setRatio---------->  2222");
+            GLES30.glDeleteTextures(1, new int[]{glTextureId}, 0);
             glTextureId = NO_IMAGE;
         });
     }

@@ -21,6 +21,8 @@ import android.content.res.AssetManager;
 import android.graphics.PointF;
 import android.opengl.GLES30;
 
+import com.gemlightbox.core.utils.XLogger;
+
 import java.io.InputStream;
 import java.nio.FloatBuffer;
 import java.util.LinkedList;
@@ -104,8 +106,7 @@ public class GPUImageFilter {
         outputHeight = height;
     }
 
-    public void onDraw(final int textureId, final FloatBuffer cubeBuffer,
-                       final FloatBuffer textureBuffer) {
+    public void onDraw(final int textureId, final FloatBuffer cubeBuffer, final FloatBuffer textureBuffer) {
         GLES30.glUseProgram(glProgId);
         runPendingOnDrawTasks();
         if (!isInitialized) {
@@ -129,6 +130,11 @@ public class GPUImageFilter {
         GLES30.glDisableVertexAttribArray(glAttribPosition);
         GLES30.glDisableVertexAttribArray(glAttribTextureCoordinate);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
+
+        int error = GLES30.glGetError();
+        if (error != GLES30.GL_NO_ERROR) {
+            XLogger.e( "OpenGL Texture error: " + error);
+        }
     }
 
     protected void onDrawArraysPre() {

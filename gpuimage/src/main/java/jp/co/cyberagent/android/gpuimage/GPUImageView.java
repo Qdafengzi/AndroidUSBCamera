@@ -40,8 +40,6 @@ import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -93,6 +91,10 @@ public class GPUImageView extends FrameLayout {
             gpuImage.setGLSurfaceView((GLSurfaceView) surfaceView);
         }
         addView(surfaceView);
+    }
+
+    public View getSurfaceView() {
+        return surfaceView;
     }
 
     @Override
@@ -202,7 +204,10 @@ public class GPUImageView extends FrameLayout {
         }
     }
 
-    // TODO Should be an xml attribute. But then GPUImage can not be distributed as .jar anymore.
+    /**
+     * todo：渲染视频 有问题需要两次才可以生效
+     * @param ratio 比例
+     */
     public void setRatio(float ratio) {
         this.ratio = ratio;
         surfaceView.requestLayout();
@@ -556,9 +561,6 @@ public class GPUImageView extends FrameLayout {
                 Bitmap result = width != 0 ? capture(width, height) : capture();
                 saveImage(folderName, fileName, result);
             } catch (InterruptedException e) {
-                if(!BuildConfig.DEBUG){
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
                 e.printStackTrace();
             }
             return null;
@@ -589,9 +591,6 @@ public class GPUImageView extends FrameLayout {
                             }
                         });
             } catch (FileNotFoundException e) {
-                if(!BuildConfig.DEBUG){
-                    FirebaseCrashlytics.getInstance().recordException(e);
-                }
                 e.printStackTrace();
             }
         }

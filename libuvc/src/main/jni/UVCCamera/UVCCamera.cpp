@@ -892,6 +892,7 @@ int UVCCamera::setExposureMode(int mode) {
 //		LOGI("ae:%d", mode);
 		r = uvc_set_ae_mode(mDeviceHandle, mode/* & 0xff*/);
 	}
+//    LOGI("ae result:%d", r);
 	RETURN(r, int);
 }
 
@@ -968,6 +969,7 @@ int UVCCamera::setExposure(int ae_abs) {
 //		LOGI("ae_abs:%d", ae_abs);
 		r = uvc_set_exposure_abs(mDeviceHandle, ae_abs/* & 0xff*/);
 	}
+//    LOGI("ae_abs r:%d", r);
 	RETURN(r, int);
 }
 

@@ -647,6 +647,7 @@ public class UVCCamera {
 	 */
 	public synchronized void setExposure(int exposure){
 		if (mNativePtr != 0) {
+			nativeSetExposure(mNativePtr, exposure);
 			final float range = Math.abs(mExposureMax - mExposureMin);
 			if (range > 0)
 				nativeSetExposure(mNativePtr, (int)(exposure / 100.f * range) + mExposureMin);
