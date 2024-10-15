@@ -1688,19 +1688,20 @@ static jint nativeGetPowerlineFrequency(JNIEnv *env, jobject thiz,
 
 //======================================================================
 // Java mnethod correspond to this function should not be a static mathod
-static jint nativeUpdateZoomLimit(JNIEnv *env, jobject thiz,
-	ID_TYPE id_camera) {
+static jint nativeUpdateZoomLimit(JNIEnv *env, jobject thiz,ID_TYPE id_camera) {
 	jint result = JNI_ERR;
 	ENTER();
-	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	auto *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	if (LIKELY(camera)) {
 		int min, max, def;
 		result = camera->updateZoomLimit(min, max, def);
+        //LOGI("result:%d",result );
 		if (!result) {
 			// Java側へ書き込む
 			setField_int(env, thiz, "mZoomMin", min);
 			setField_int(env, thiz, "mZoomMax", max);
 			setField_int(env, thiz, "mZoomDef", def);
+            //LOGI("把数据设置给原生 zoomDef:%d, min:%d max:%d", def, min, max);
 		}
 	}
 	RETURN(result, jint);

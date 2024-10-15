@@ -3,10 +3,8 @@ package com.camera.demo
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
 import android.graphics.ImageFormat
 import android.graphics.Paint
-import android.graphics.PorterDuff
 import android.graphics.YuvImage
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
@@ -19,18 +17,24 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -122,6 +126,11 @@ data class UvcCameraUIState(
     val exposureModelMin: Int = 1,
 )
 
+data class CameraOtherState(
+    val deviceInfo: String = "",
+    val showDeviceInfoDialog: Boolean = false,
+)
+
 enum class ExposureModel(val value: Int) {
     //自动曝光（Auto Mode）：通常为 0x02
     //手动曝光（Manual Mode）：通常为 0x01
@@ -141,9 +150,19 @@ data class AspectRatioData(
 class UvcCameraViewModel : ViewModel() {
     private val _cameraUIState = MutableStateFlow(UvcCameraUIState())
     val cameraUIState = _cameraUIState.asStateFlow()
-    fun updateParams(state :UvcCameraUIState){
+
+    private val _cameraOtherUIState = MutableStateFlow(CameraOtherState())
+    val cameraOtherUIState = _cameraOtherUIState.asStateFlow()
+
+    fun updateParams(state: UvcCameraUIState) {
         _cameraUIState.update {
             state
+        }
+    }
+
+    fun showDeviceInfoDialog(deviceInfo: String, show: Boolean) {
+        _cameraOtherUIState.update {
+            it.copy(deviceInfo = deviceInfo, showDeviceInfoDialog = show)
         }
     }
 }
@@ -155,7 +174,7 @@ open class UvcCameraFragment : CameraFragment() {
     var mCurrentAspectWithP = 1
     var mCurrentAspectHeightP = 1
 
-    private lateinit var mGpuSurfaceView:View
+    private lateinit var mGpuSurfaceView: View
 
     private val mLifecycleOwner by lazy {
         lifecycleScope
@@ -165,11 +184,11 @@ open class UvcCameraFragment : CameraFragment() {
     private val mGpuImageMovieWriter by lazy {
         GPUImageMovieWriter()
     }
-    private val mGPUImageWhiteBalanceFilter by lazy{
+    private val mGPUImageWhiteBalanceFilter by lazy {
         GPUImageWhiteBalanceFilter()
     }
 
-    private val mGPUImageBrightnessFilter by lazy{
+    private val mGPUImageBrightnessFilter by lazy {
         GPUImageBrightnessFilter()
     }
 
@@ -253,7 +272,7 @@ open class UvcCameraFragment : CameraFragment() {
 
         mGpuSurfaceView = mBinding.imageView.surfaceView
 
-        (mGpuSurfaceView as? SurfaceView)?.holder?.addCallback(object :SurfaceHolder.Callback{
+        (mGpuSurfaceView as? SurfaceView)?.holder?.addCallback(object : SurfaceHolder.Callback {
             val paint = Paint().apply {
                 color = Color.Red.toArgb()
             }
@@ -275,16 +294,15 @@ open class UvcCameraFragment : CameraFragment() {
 
         })
 
+
+
+
         setFilter()
-
-
         setContent()
     }
 
 
-
-
-    fun setFilter(){
+    fun setFilter() {
         mBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
         val gpuImageFilters = mutableListOf<GPUImageFilter>()
         gpuImageFilters.add(mGpuImageMovieWriter)
@@ -303,8 +321,9 @@ open class UvcCameraFragment : CameraFragment() {
 
     }
 
-    private fun setContent(){
+    private fun setContent() {
         mBinding.compose.setContent {
+            DeviceInfoDialog()
             val scrollState = rememberScrollState()
             Column(
                 modifier = Modifier
@@ -312,25 +331,304 @@ open class UvcCameraFragment : CameraFragment() {
                     .verticalScroll(state = scrollState, enabled = true)
                     .background(color = Color.White),
             ) {
-                FiltersView()
+
                 ButtonView()
-                Row(){
+                Row() {
+                    DeviceInfoView()
                     ResetView()
                     AutoBalanceView()
                 }
-                DeviceInfoView()
-
-
-                AspectView()
-
+                AspectRatioView()
+                SliderContent()
             }
         }
     }
 
     @Composable
-    fun AspectView() {
-        val scope = rememberCoroutineScope()
+    fun DeviceInfoDialog() {
+        val cameraOtherUIState = mViewModel.cameraOtherUIState.collectAsState().value
+        if (cameraOtherUIState.showDeviceInfoDialog) {
+            AlertDialog(
+                onDismissRequest = {},
+                confirmButton = {
+                    TextButton(onClick = {
+                        mViewModel.showDeviceInfoDialog(deviceInfo = "", false)
+                    }) {
+                        Text(text = "OK")
+                    }
+                },
+                text = {
+                    Text(cameraOtherUIState.deviceInfo)
+                },
+                title = {
+                    Text("Device Info")
+                },
+            )
+        }
+    }
 
+
+    @Composable
+    fun SliderContent() {
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 2.dp, end = 2.dp, top = 4.dp)
+        ) {
+            SliderByUvcContent(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 2.dp)
+                    .border(width = 0.5.dp, color = Color.Magenta)
+            )
+            SliderByFilterContent(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 2.dp)
+                    .border(width = 0.5.dp, color = Color.Magenta)
+            )
+        }
+    }
+
+    @Composable
+    fun SliderByUvcContent(modifier: Modifier= Modifier) {
+      Column(modifier = modifier) {
+          ZoomAndFocus()
+          BrightnessAndExposure()
+          GammaAndContrast()
+          SharpnessAndSaturation()
+          HueAnd()
+      }
+    }
+
+
+
+    @Composable
+    fun ZoomAndFocus() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        val zoomSliderValue = remember { mutableFloatStateOf(1f) }
+        val focusValue = remember { mutableFloatStateOf(1f) }
+
+        LaunchedEffect(cameraUIState.zoomMin,cameraUIState.focusMin) {
+            cameraUIState.apply {
+                if ((zoomMax - zoomMin) != 0f) {
+                    XLogger.d("zoomMax:${zoomMax} zoomMin:${zoomMin}")
+                    zoomSliderValue.floatValue = 100 * (zoom - zoomMin) / (zoomMax - zoomMin)
+                }
+
+                if ((focusMax - focusMin) != 0f) {
+                    focusValue.floatValue = 100 * (focus - focusMin) / (focusMax - focusMin)
+                }
+            }
+        }
+
+        SliderView(
+            name = "Zoom",
+            range = 1f..100f,
+            sliderValue = zoomSliderValue,
+            onValueChange = { progress ->
+                zoomSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
+            }
+        )
+        SliderView(
+            name = "Focus",
+            range = 1f..100f,
+            sliderValue = focusValue,
+            onValueChange = { progress ->
+                focusValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setFocus(progress.toInt())
+            }
+        )
+    }
+
+    @Composable
+    fun BrightnessAndExposure() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        val brightnessSliderValue = remember { mutableFloatStateOf(1f) }
+        val exposureValue = remember { mutableFloatStateOf(1f) }
+
+
+        LaunchedEffect(cameraUIState.brightnessMin,cameraUIState.exposureMin) {
+            cameraUIState.apply {
+                if ((brightnessMax - brightnessMin) != 0f) {
+                    brightnessSliderValue.floatValue = 100 * (brightness - brightnessMin) / (brightnessMax - brightnessMin)
+                }
+
+                if ((exposureMax - exposureMin) != 0f) {
+                    exposureValue.floatValue = 100 * (exposure - exposureMin) / (exposureMax - exposureMin)
+                }
+            }
+        }
+
+        SliderView(
+            name = "Brightness",
+            range = 1f..100f,
+            sliderValue = brightnessSliderValue,
+            onValueChange = { progress ->
+                brightnessSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
+            }
+        )
+
+        SliderView(
+            name = "Exposure",
+            range = 1f..100f,
+            sliderValue = exposureValue,
+            onValueChange = { progress ->
+                exposureValue.floatValue = progress
+                //调成手动模式
+                XLogger.d("ae min:${cameraUIState.exposureMin} max${cameraUIState.exposureMax}")
+                (getCurrentCamera() as? CameraUVC)?.apply {
+                    val exposureModel = getExposureModel()
+                    if (exposureModel != ExposureModel.MANUAL_MODEL.value) {
+                        setExposureModel(ExposureModel.MANUAL_MODEL.value)
+                    }
+                    setExposure(progress.toInt())
+                }
+            }
+        )
+    }
+
+    @Composable
+    fun GammaAndContrast() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        val gammaSliderValue = remember { mutableFloatStateOf(1f) }
+        val contrastSliderValue = remember { mutableFloatStateOf(1f) }
+
+        LaunchedEffect(cameraUIState.gammaMin,cameraUIState.contrastMin) {
+            cameraUIState.apply {
+                if ((gammaMax - gammaMin) != 0f) {
+                    gammaSliderValue.floatValue = 100 * (gamma - gammaMin) / (gammaMax - gammaMin)
+                }
+
+                if ((contrastMax - contrastMin) != 0f) {
+                    contrastSliderValue.floatValue = 100 * (contrast - contrastMin) / (contrastMax - contrastMin)
+                }
+            }
+        }
+
+
+        SliderView(
+            name = "Gamma",
+            range = 1f..100f,
+            sliderValue = gammaSliderValue,
+            onValueChange = { progress ->
+                gammaSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
+
+            }
+        )
+
+        SliderView(
+            name = "Contrast",
+            range = 1f..100f,
+            sliderValue = contrastSliderValue,
+            onValueChange = { progress ->
+                contrastSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setContrast(progress.toInt())
+            }
+        )
+    }
+
+    @Composable
+    fun SharpnessAndSaturation() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        val sharpnessSliderValue = remember { mutableFloatStateOf(1f) }
+        val saturationSliderValue = remember { mutableFloatStateOf(1f) }
+
+        LaunchedEffect(cameraUIState.sharpnessMin,cameraUIState.saturationMin) {
+            cameraUIState.apply {
+                if ((sharpnessMax - sharpnessMin) != 0f) {
+                    sharpnessSliderValue.floatValue = 100 * (sharpness - sharpnessMin) / (sharpnessMax - sharpnessMin)
+                }
+
+                if ((saturationMax - saturationMin) != 0f) {
+                    saturationSliderValue.floatValue = 100 * (saturation - saturationMin) / (saturationMax - saturationMin)
+                }
+            }
+        }
+
+
+        SliderView(
+            name = "Sharpness",
+            range = 1f..100f,
+            sliderValue = sharpnessSliderValue,
+            onValueChange = { progress ->
+                sharpnessSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setSharpness(progress.toInt())
+            }
+        )
+
+        SliderView(
+            name = "Saturation",
+            range = 1f..100f,
+            sliderValue = saturationSliderValue,
+            onValueChange = { progress ->
+                saturationSliderValue.floatValue = progress
+                (getCurrentCamera() as? CameraUVC)?.setSaturation(progress.toInt())
+            }
+        )
+    }
+
+
+
+
+    @Composable
+    fun SliderByFilterContent(modifier: Modifier= Modifier) {
+        Column(modifier = modifier) {
+            val temperatureSliderValue = remember { mutableFloatStateOf(5000f) }
+            SliderView(
+                name = "temperature",
+                range = 2000f..9000f,
+                sliderValue = temperatureSliderValue,
+                onValueChange = { progress ->
+                    temperatureSliderValue.floatValue = progress
+                    mGPUImageWhiteBalanceFilter.setTemperature(progress)
+                }
+            )
+
+            val tintSliderValue = remember { mutableFloatStateOf(50f) }
+            SliderView(
+                name = "tint",
+                range = 0f..100f,
+                sliderValue = tintSliderValue,
+                onValueChange = { progress ->
+                    tintSliderValue.floatValue = progress
+                    mGPUImageWhiteBalanceFilter.setTint(progress)
+                }
+            )
+
+            val toneSliderValue = remember { mutableFloatStateOf(0f) }
+            SliderView(
+                name = "Tone",
+                range = -0.3f..0.3f,
+                sliderValue = toneSliderValue,
+                onValueChange = { progress ->
+                    toneSliderValue.floatValue = progress
+                    mGpuImageLevelsFilter.setMin(
+                        progress,
+                        1f, 1f, 0f, 1f
+                    )
+                }
+            )
+
+            val brightness2SliderValue = remember { mutableFloatStateOf(0f) }
+            SliderView(
+                name = "Brightness by filter",
+                range = -1f..1f,
+                sliderValue = brightness2SliderValue,
+                onValueChange = { progress ->
+                    brightness2SliderValue.floatValue = progress
+                    mGPUImageBrightnessFilter.setBrightness(progress)
+                }
+            )
+        }
+    }
+
+
+    @Composable
+    fun AspectRatioView() {
+        val scope = rememberCoroutineScope()
         val aspectList = mutableListOf<AspectRatioData>()
         aspectList.add(AspectRatioData(1, 1))
         aspectList.add(AspectRatioData(16, 9))
@@ -338,26 +636,25 @@ open class UvcCameraFragment : CameraFragment() {
         aspectList.add(AspectRatioData(4, 5))
         aspectList.add(AspectRatioData(4, 3))
         aspectList.add(AspectRatioData(2, 1))
-        LazyRow(modifier = Modifier.fillMaxWidth()) {
+        LazyRow(modifier = Modifier
+            .fillMaxWidth()
+            .background(color = Color(0xFF3F51B5))) {
             aspectList.forEach {
                 item {
                     TextButton(onClick = {
                         mCurrentAspectWithP = it.widthP
                         mCurrentAspectHeightP = it.heightP
                         scope.launch(Dispatchers.IO) {
-                            withContext(Dispatchers.Main){
-                                mBinding.imageView.setRatio(it.widthP.toFloat()/it.heightP)
+                            withContext(Dispatchers.Main) {
+                                mBinding.imageView.setRatio(it.widthP.toFloat() / it.heightP)
                             }
                             delay(300)
-                            withContext(Dispatchers.Main){
-                                mBinding.imageView.setRatio(it.widthP.toFloat()/it.heightP)
+                            withContext(Dispatchers.Main) {
+                                mBinding.imageView.setRatio(it.widthP.toFloat() / it.heightP)
                             }
                         }
-
-
-
                     }) {
-                        Text("${it.widthP}:${it.heightP}")
+                        Text(text = "${it.widthP}:${it.heightP}", color = Color.White)
                     }
                 }
             }
@@ -370,12 +667,12 @@ open class UvcCameraFragment : CameraFragment() {
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
         var autoWhiteBalance by remember { mutableStateOf(cameraUIState.autoWhiteBalance) }
         Row(verticalAlignment = Alignment.CenterVertically) {
-           Text("AutoWhiteBalance")
-           Switch(checked = autoWhiteBalance,onCheckedChange = {
-               autoWhiteBalance = it
-               (getCurrentCamera() as? CameraUVC)?.setAutoWhiteBalance(it)
-           })
-       }
+            Text("AutoWhiteBalance")
+            Switch(checked = autoWhiteBalance, onCheckedChange = {
+                autoWhiteBalance = it
+                (getCurrentCamera() as? CameraUVC)?.setAutoWhiteBalance(it)
+            })
+        }
     }
 
     @Composable
@@ -405,91 +702,47 @@ open class UvcCameraFragment : CameraFragment() {
     @Composable
     fun DeviceInfoView() {
         val scope = rememberCoroutineScope()
-        var deviceInfo by  remember { mutableStateOf("") }
-        Column {
-            Button(onClick = {
-                scope.launch {
-                    val camera = (getCurrentCamera() as? CameraUVC)
-                    camera?.let {
-                        val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
-                        val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
-                        val info = "info：" +
-                                "\nmanufacturerName:${camera.device.manufacturerName}" +
-                                "\ndeviceId:${camera.device.deviceId}" +
-                                "\ndeviceName:${camera.device.deviceName}" +
-                                "\ndeviceClass:${camera.device.deviceClass}" +
-                                "\ndeviceSubclass:${camera.device.deviceSubclass}" +
-                                "\ndeviceProtocol:${camera.device.deviceProtocol}" +
-                                "\nserialNumber:${camera.device.serialNumber}" +
-                                "\nproductId:${camera.device.productId}" +
-                                "\nproductName:${camera.device.productName}" +
-                                "\nversion:${camera.device.version}" +
-                                "\nvendorId:${camera.device.vendorId}"
-                        deviceInfo = info
-                    }
+        IconButton(onClick = {
+            scope.launch {
+                val camera = (getCurrentCamera() as? CameraUVC)
+                camera?.let {
+                    val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
+                    val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
+                    val info =
+                            "\nManufacturerName:    ${camera.device.manufacturerName}" +
+                            "\nDeviceId:    ${camera.device.deviceId}" +
+                            "\nDeviceName:  ${camera.device.deviceName}" +
+                            "\nDeviceClass: ${camera.device.deviceClass}" +
+                            "\nDeviceSubclass:  ${camera.device.deviceSubclass}" +
+                            "\nDeviceProtocol:  ${camera.device.deviceProtocol}" +
+                            "\nSerialNumber:    ${camera.device.serialNumber}" +
+                            "\nProductId:   ${camera.device.productId}" +
+                            "\nProductName: ${camera.device.productName}" +
+                            "\nVersion: ${camera.device.version}" +
+                            "\nVendorId:    ${camera.device.vendorId}"
+                    mViewModel.showDeviceInfoDialog(deviceInfo = info, show = true)
                 }
-            }) {
-                Text("info")
             }
-            Text(deviceInfo)
+        }) {
+            Icon(imageVector = Icons.Default.Info, contentDescription = "")
         }
     }
 
 
     @Composable
-    fun FiltersView() {
-        XLogger.d("Filters2 刷新")
+    fun HueAnd() {
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
-
-        val focusValue = remember { mutableFloatStateOf(cameraUIState.focus) }
-        SliderView(
-            name = "Focus",
-//            range = cameraUIState.focusMin..cameraUIState.focusMax,
-            range = 1f..100f,
-            sliderValue = focusValue,
-            onValueChange = { progress ->
-                focusValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setFocus(progress.toInt())
-            }
-        )
-
-        val exposureValue = remember { mutableFloatStateOf(cameraUIState.exposure) }
-        SliderView(
-            name = "Exposure",
-//            range = cameraUIState.exposureMin..cameraUIState.exposureMax,
-            range = 1f..100f,
-            sliderValue = exposureValue,
-            onValueChange = { progress ->
-                exposureValue.floatValue = progress
-                //调成手动模式
-                XLogger.d("ae min:${cameraUIState.exposureMin} max${cameraUIState.exposureMax}")
-                (getCurrentCamera() as? CameraUVC)?.apply {
-                    val exposureModel = getExposureModel()
-                    if (exposureModel != ExposureModel.MANUAL_MODEL.value) {
-                        setExposureModel(ExposureModel.MANUAL_MODEL.value)
-                    }
-                    setExposure(progress.toInt())
+        val hueSliderValue = remember { mutableFloatStateOf(1f) }
+        LaunchedEffect(cameraUIState.hueMin) {
+            cameraUIState.apply {
+                if ((hueMax - hueMin) != 0f) {
+                    hueSliderValue.floatValue = 100 * (hue - hueMin) / (hueMax - hueMin)
                 }
             }
-        )
+        }
 
-        val contrastSliderValue = remember { mutableFloatStateOf(cameraUIState.contrast) }
-        SliderView(
-            name = "Contrast",
-//            range = cameraUIState.contrastMin..cameraUIState.contrastMax,
-            range = 1f..100f,
-            sliderValue = contrastSliderValue,
-            onValueChange = { progress ->
-                contrastSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setContrast(progress.toInt())
-            }
-        )
-
-
-        val hueSliderValue = remember { mutableFloatStateOf(cameraUIState.hue) }
         SliderView(
             name = "Hue",
-//            range = cameraUIState.hueMin..cameraUIState.hueMax,
             range = 1f..100f,
             sliderValue = hueSliderValue,
             onValueChange = { progress ->
@@ -497,119 +750,7 @@ open class UvcCameraFragment : CameraFragment() {
                 (getCurrentCamera() as? CameraUVC)?.setHue(progress.toInt())
             }
         )
-
-        // TODO：无作用
-        val sharpnessSliderValue = remember { mutableFloatStateOf(cameraUIState.sharpness) }
-        SliderView(
-            name = "Sharpness",
-//            range = cameraUIState.sharpnessMin..cameraUIState.sharpnessMax,
-            range = 1f..100f,
-            sliderValue = sharpnessSliderValue,
-            onValueChange = { progress ->
-                sharpnessSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setSharpness(progress.toInt())
-            }
-        )
-
-        val toneSliderValue = remember { mutableFloatStateOf(0f) }
-        SliderView(
-            name = "Tone",
-            range = -0.3f..0.3f,
-            sliderValue = toneSliderValue,
-            onValueChange = { progress ->
-                toneSliderValue.floatValue = progress
-                mGpuImageLevelsFilter.setMin(
-                    progress,
-                    1f, 1f, 0f, 1f
-                )
-            }
-        )
-
-
-        val saturationSliderValue = remember { mutableFloatStateOf(cameraUIState.saturation) }
-        SliderView(
-            name = "Saturation",
-//            range = cameraUIState.saturationMin..cameraUIState.saturationMax,
-            range = 1f..100f,
-            sliderValue = saturationSliderValue,
-            onValueChange = { progress ->
-                saturationSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setSaturation(progress.toInt())
-            }
-        )
-
-        val temperatureSliderValue = remember { mutableFloatStateOf(5000f) }
-        SliderView(
-            name = "temperature",
-            range = 2000f..9000f,
-            sliderValue = temperatureSliderValue,
-            onValueChange = { progress ->
-                temperatureSliderValue.floatValue = progress
-                mGPUImageWhiteBalanceFilter.setTemperature(progress)
-            }
-        )
-
-        val tintSliderValue = remember { mutableFloatStateOf(50f) }
-        SliderView(
-            name = "tint",
-            range = 0f..100f,
-            sliderValue = tintSliderValue,
-            onValueChange = { progress ->
-                tintSliderValue.floatValue = progress
-                mGPUImageWhiteBalanceFilter.setTint(progress)
-            }
-        )
-
-        val brightnessSliderValue = remember { mutableFloatStateOf(cameraUIState.brightness) }
-        SliderView(
-            name = "Brightness  by Camera",
-//            range = cameraUIState.brightnessMin..cameraUIState.brightnessMax,
-            range = 1f..100f,
-            sliderValue = brightnessSliderValue,
-            onValueChange = { progress ->
-                brightnessSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
-            }
-        )
-
-        val brightness2SliderValue = remember { mutableFloatStateOf(0f) }
-        SliderView(
-            name = "Brightness by filter",
-            range = -1f..1f,
-            sliderValue = brightness2SliderValue,
-            onValueChange = { progress ->
-                brightness2SliderValue.floatValue = progress
-                mGPUImageBrightnessFilter.setBrightness(progress)
-            }
-        )
-
-        val gammaSliderValue = remember { mutableFloatStateOf(cameraUIState.gamma) }
-        SliderView(
-            name = "Gamma",
-            range = 1f..100f,
-//            range = cameraUIState.gammaMin..cameraUIState.gammaMax,
-            sliderValue = gammaSliderValue,
-            onValueChange = { progress ->
-                gammaSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
-
-            }
-        )
-
-        val zoomSliderValue = remember { mutableFloatStateOf(cameraUIState.zoom) }
-        SliderView(
-            name = "Zoom",
-//            range = cameraUIState.zoomMin..cameraUIState.zoomMax,
-            range = 1f..100f,
-            sliderValue = zoomSliderValue,
-            onValueChange = { progress ->
-                zoomSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
-            }
-        )
     }
-
-
 
 
     fun refreshGallery2(context: Context, filePath: String) {
@@ -653,7 +794,6 @@ open class UvcCameraFragment : CameraFragment() {
             }
         }
     }
-
 
 
     @Composable
@@ -758,15 +898,15 @@ open class UvcCameraFragment : CameraFragment() {
                     // 获取帧率
                     if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                         val frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE)
-                       XLogger.d( "Frame Rate: $frameRate fps")
+                        XLogger.d("Frame Rate: $frameRate fps")
                     } else {
-                        XLogger.d( "Frame Rate information not available.")
+                        XLogger.d("Frame Rate information not available.")
                     }
                     break // 找到视频轨道后无需继续
                 }
             }
         } catch (e: java.lang.Exception) {
-            XLogger.d( "Error extracting video info"+ e.message)
+            XLogger.d("Error extracting video info" + e.message)
         } finally {
             extractor.release()
         }
@@ -896,7 +1036,12 @@ open class UvcCameraFragment : CameraFragment() {
 
                             mLifecycleOwner.launch(Dispatchers.IO) {
                                 //颜色有问题
-                                val newData = cropNV21(data, width, height, mCurrentAspectWithP.toFloat() / mCurrentAspectHeightP)
+                                val newData = cropNV21(
+                                    data,
+                                    width,
+                                    height,
+                                    mCurrentAspectWithP.toFloat() / mCurrentAspectHeightP
+                                )
                                 newData?.let {
 //                                    logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
                                     if (mRenderWidth != newData.width) {
@@ -907,7 +1052,8 @@ open class UvcCameraFragment : CameraFragment() {
                                     }
 
 
-                                    val bitmap = yuv420ToBitmap(newData.data, newData.width, newData.height)
+                                    val bitmap =
+                                        yuv420ToBitmap(newData.data, newData.width, newData.height)
                                     mBinding.imageView.setImage(bitmap)
                                     return@launch
                                 }
@@ -951,10 +1097,8 @@ open class UvcCameraFragment : CameraFragment() {
     }
 
 
-   companion object{
-   }
-
-
+    companion object {
+    }
 
 
     data class CroppedNV21(

@@ -2075,12 +2075,12 @@ int UVCCamera::getPowerlineFrequency() {
 //======================================================================
 // ズーム(abs)調整
 int UVCCamera::updateZoomLimit(int &min, int &max, int &def) {
-	ENTER();
-	int ret = UVC_ERROR_IO;
-	if (mCtrlSupports & CTRL_ZOOM_ABS) {
-		UPDATE_CTRL_VALUES(mZoom, uvc_get_zoom_abs)
-	}
-	RETURN(ret, int);
+    ENTER();
+    int ret = UVC_ERROR_IO;
+    if (mCtrlSupports & CTRL_ZOOM_ABS) {
+        UPDATE_CTRL_VALUES(mZoom, uvc_get_zoom_abs)
+    }
+    RETURN(ret, int);
 }
 
 // ズーム(abs)を設定
@@ -2098,9 +2098,10 @@ int UVCCamera::getZoom() {
 	ENTER();
 	if (mCtrlSupports & CTRL_ZOOM_ABS) {
 		int ret = update_ctrl_values(mDeviceHandle, mZoom, uvc_get_zoom_abs);
-		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
+		if (LIKELY(!ret)) {	// 当成功获取最小值和最大值时
 			uint16_t value;
 			ret = uvc_get_zoom_abs(mDeviceHandle, &value, UVC_GET_CUR);
+            //LOGI("get zoom ret:%d  value:%d",ret,value);
 			if (LIKELY(!ret))
 				return value;
 		}

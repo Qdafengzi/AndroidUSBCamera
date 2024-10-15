@@ -575,8 +575,7 @@ uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, uint8_t iris) {
 }
 
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,
-		enum uvc_req_code req_code) {
+uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,enum uvc_req_code req_code) {
 	uint8_t data[2];
 	uvc_error_t ret;
 
@@ -585,10 +584,13 @@ uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,
 			devh->info->ctrl_if.input_term_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
+    //LOGI("uvc_get_zoom_abs  max:%d min:%d  sizeOfData:%d  ret:%d", data[0], data[1],sizeof(data),ret);
 	if (LIKELY(ret == sizeof(data))) {
 		*zoom = SW_TO_SHORT(data);
+//        LOGI("uvc_get_zoom_abs ok");
 		return UVC_SUCCESS;
 	} else {
+//        LOGI("uvc_get_zoom_abs fail");
 		return ret;
 	}
 }
