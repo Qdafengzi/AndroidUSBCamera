@@ -584,13 +584,13 @@ uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,enum uvc_
 			devh->info->ctrl_if.input_term_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
-    //LOGI("uvc_get_zoom_abs  max:%d min:%d  sizeOfData:%d  ret:%d", data[0], data[1],sizeof(data),ret);
+    LOGI("uvc_get_zoom_abs  max:%d min:%d  sizeOfData:%d  ret:%d", data[0], data[1],sizeof(data),ret);
 	if (LIKELY(ret == sizeof(data))) {
 		*zoom = SW_TO_SHORT(data);
-//        LOGI("uvc_get_zoom_abs ok");
+        LOGI("uvc_get_zoom_abs ok");
 		return UVC_SUCCESS;
 	} else {
-//        LOGI("uvc_get_zoom_abs fail");
+        LOGI("uvc_get_zoom_abs fail");
 		return ret;
 	}
 }

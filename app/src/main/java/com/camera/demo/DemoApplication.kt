@@ -15,16 +15,16 @@
  */
 package com.camera.demo
 
+import android.app.Application
 import android.content.Context
 import androidx.multidex.MultiDex
-import com.jiangdg.ausbc.base.BaseApplication
 import com.camera.utils.MMKVUtils
 
 /**
  *
  * @author Created by jiangdg on 2022/2/28
  */
-class DemoApplication: BaseApplication() {
+class DemoApplication: Application() {
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)

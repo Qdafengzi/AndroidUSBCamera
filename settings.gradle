@@ -7,3 +7,4 @@ include ':libnative'
 
 include ':core'
 include ':gpuimage'
+include ':libuvccamera'

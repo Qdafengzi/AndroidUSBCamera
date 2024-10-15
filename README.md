@@ -35,6 +35,10 @@
 16.重置功能、缩放功能
 
 
+zoom 和sharpness不管用
+
+
+
 
 7.问题解决
 https://zsyyblog.com/d5fcd821.html

@@ -889,10 +889,10 @@ int UVCCamera::setExposureMode(int mode) {
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE)) {
-//		LOGI("ae:%d", mode);
+		LOGI("ae model:%d", mode);
 		r = uvc_set_ae_mode(mDeviceHandle, mode/* & 0xff*/);
 	}
-//    LOGI("ae result:%d", r);
+    LOGI("set ae model result:%d", r);
 	RETURN(r, int);
 }
 
@@ -904,7 +904,7 @@ int UVCCamera::getExposureMode() {
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE)) {
 		uint8_t mode;
 		r = uvc_get_ae_mode(mDeviceHandle, &mode, UVC_GET_CUR);
-//		LOGI("ae:%d", mode);
+		LOGI("ae:%d", mode);
 		if (LIKELY(!r)) {
 			r = mode;
 		}
@@ -2101,7 +2101,7 @@ int UVCCamera::getZoom() {
 		if (LIKELY(!ret)) {	// 当成功获取最小值和最大值时
 			uint16_t value;
 			ret = uvc_get_zoom_abs(mDeviceHandle, &value, UVC_GET_CUR);
-            //LOGI("get zoom ret:%d  value:%d",ret,value);
+            LOGI("get zoom ret:%d  value:%d",ret,value);
 			if (LIKELY(!ret))
 				return value;
 		}

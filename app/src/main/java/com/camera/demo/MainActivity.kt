@@ -16,6 +16,7 @@
 package com.camera.demo
 
 import android.Manifest.permission.*
+import android.app.ProgressDialog.show
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -23,13 +24,12 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker
 import androidx.fragment.app.Fragment
 import com.camera.demo.databinding.ActivityMainBinding
-import com.jiangdg.ausbc.utils.ToastUtils
-import com.jiangdg.ausbc.utils.Utils
 
 /**
  * Demos of camera usage
@@ -61,14 +61,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        mWakeLock = Utils.wakeLock(this)
+//        mWakeLock = Utils.wakeLock(this)
     }
 
     override fun onStop() {
         super.onStop()
-        mWakeLock?.apply {
-            Utils.wakeUnLock(this)
-        }
+//        mWakeLock?.apply {
+//            Utils.wakeUnLock(this)
+//        }
     }
 
     private fun replaceDemoFragment(fragment: Fragment) {
@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
 //        val hasStoragePermission = PermissionChecker.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE)
         if (hasCameraPermission != PermissionChecker.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, CAMERA)) {
-                ToastUtils.show(R.string.permission_tip)
+                Toast.makeText(this,R.string.permission_tip,Toast.LENGTH_LONG).show()
             }
             ActivityCompat.requestPermissions(
                 this,
@@ -100,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             REQUEST_CAMERA -> {
                 val hasCameraPermission = PermissionChecker.checkSelfPermission(this, CAMERA)
                 if (hasCameraPermission == PermissionChecker.PERMISSION_DENIED) {
-                    ToastUtils.show(R.string.permission_tip)
+                    Toast.makeText(this,R.string.permission_tip,Toast.LENGTH_LONG).show()
                     return
                 }
 //                replaceDemoFragment(DemoMultiCameraFragment())
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                 val hasCameraPermission =
                     PermissionChecker.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE)
                 if (hasCameraPermission == PermissionChecker.PERMISSION_DENIED) {
-                    ToastUtils.show(R.string.permission_tip)
+                    Toast.makeText(this,R.string.permission_tip,Toast.LENGTH_LONG).show()
                     return
                 }
                 // todo

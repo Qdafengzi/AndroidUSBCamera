@@ -4,8 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
-import android.graphics.Paint
 import android.graphics.YuvImage
+import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.media.MediaExtractor
@@ -14,7 +14,6 @@ import android.media.MediaScannerConnection
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.Image
@@ -53,24 +52,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
-import com.camera.demo.databinding.FragmentDemo01Binding
-import com.camera.utils.ResUtils
+import com.camera.demo.databinding.FragmentDemo02Binding
 import com.camera.utils.XLogger
-import com.jiangdg.ausbc.MultiCameraClient
-import com.jiangdg.ausbc.base.CameraFragment
-import com.jiangdg.ausbc.callback.ICameraStateCallBack
-import com.jiangdg.ausbc.callback.IEncodeDataCallBack
-import com.jiangdg.ausbc.callback.IPreviewDataCallBack
-import com.jiangdg.ausbc.camera.CameraUVC
-import com.jiangdg.ausbc.camera.bean.CameraRequest
-import com.jiangdg.ausbc.render.env.RotateType
-import com.jiangdg.ausbc.widget.AspectRatioSurfaceView
-import com.jiangdg.ausbc.widget.IAspectRatio
+import com.herohan.uvcapp.CameraHelper
+import com.herohan.uvcapp.ICameraHelper
+import com.serenegiant.usb.UVCCamera
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
@@ -87,6 +79,8 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
+import java.text.DecimalFormat
+
 
 data class UvcCameraUIState(
     val autoWhiteBalance: Boolean = true,
@@ -167,18 +161,19 @@ class UvcCameraViewModel : ViewModel() {
     }
 }
 
-open class UvcCameraFragment : CameraFragment() {
+open class UvcCameraFragment : Fragment() {
     var mRenderWidth = 1920
     var mRenderHeight = 1920
 
+    val DEFAULT_WIDTH: Int = 3840
+     val DEFAULT_HEIGHT: Int = 2880
+
+
     var mCurrentAspectWithP = 1
     var mCurrentAspectHeightP = 1
+    private var mCameraHelper: ICameraHelper? = null
+    private var mCustomFPS: CustomFPS? = null
 
-    private lateinit var mGpuSurfaceView: View
-
-    private val mLifecycleOwner by lazy {
-        lifecycleScope
-    }
     private val mViewModel = UvcCameraViewModel()
 
     private val mGpuImageMovieWriter by lazy {
@@ -196,109 +191,181 @@ open class UvcCameraFragment : CameraFragment() {
         GPUImageLevelsFilter()
     }
 
-    private lateinit var mBinding: FragmentDemo01Binding
+    private lateinit var mBinding: FragmentDemo02Binding
 
-    override fun getCameraViewContainer(): ViewGroup? {
-        return mBinding.fragmentContainer
-    }
 
-    override fun getRootView(inflater: LayoutInflater, container: ViewGroup?): View? {
-        mBinding = FragmentDemo01Binding.inflate(inflater, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        mBinding = FragmentDemo02Binding.inflate(inflater, container, false)
         return mBinding.root
     }
-
-    override fun getCameraRequest(): CameraRequest {
-        /**
-         *  3840 * 2160
-         *  3840 * 2880
-         *  3264 * 2448
-         *  2592 * 1944
-         *  2048 * 1536
-         *
-         *  1600 * 1200
-         *  1920 * 1080
-         *  1280 * 960
-         *  1280 * 720
-         *  1024 * 768
-         *  800 * 600
-         *  640 * 480
-         *  640 * 360
-         *  720 * 576
-         */
-        val request = CameraRequest.Builder()
-            .setPreviewWidth(3840)
-            .setPreviewHeight(2160)
-            .setRenderMode(CameraRequest.RenderMode.OPENGL)
-            .setDefaultRotateType(RotateType.ANGLE_0)
-            .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO)
-            .setPreviewFormat(CameraRequest.PreviewFormat.FORMAT_MJPEG)
-            .setAspectRatioShow(true)
-            .setCaptureRawImage(true)
-            .setRawPreviewData(true)
-            .create()
-        return request
-
-    }
-
-    override fun getCameraView(): IAspectRatio {
-        //与 UVCPreview.cpp有关系 打开frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4); 就需要使用
-//        val view = AspectRatioSurfaceView(requireContext())
-//        view.holder.addCallback(object : SurfaceHolder.Callback {
-//            override fun surfaceCreated(holder: SurfaceHolder) {
-//                holder.setFormat(PixelFormat.TRANSPARENT)
-//                drawEmpty(holder)
-//            }
-//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-//            }
-//
-//            override fun surfaceDestroyed(holder: SurfaceHolder) {
-//            }
-//        })
-//        return view
-        return AspectRatioSurfaceView(requireContext())
-    }
-
-    private fun drawEmpty(holder: SurfaceHolder) {
-        val canvas = holder.lockCanvas()
-        canvas?.let {
-            it.drawColor(Color.Transparent.toArgb()) // Clear with a transparent color
-            holder.unlockCanvasAndPost(it)
-        }
-    }
-
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        mGpuSurfaceView = mBinding.imageView.surfaceView
+        mBinding.surfaceView.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT)
 
-        (mGpuSurfaceView as? SurfaceView)?.holder?.addCallback(object : SurfaceHolder.Callback {
-            val paint = Paint().apply {
-                color = Color.Red.toArgb()
-            }
-
+        mBinding.surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
-
+                mCameraHelper?.addSurface(holder.surface, false)
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                XLogger.d("onSurfaceChanged:${width} *${height}")
-                val screenWidth = ResUtils.screenWidth
-//                val startX = (screenWidth - width) / 2
-//                val startY = (screenWidth - height) / 2
-                //mBinding.imageView.gpuImage.updateSize(startX, startY, width, height)
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
+                mCameraHelper?.removeSurface(holder.surface)
             }
-
         })
-
-
-
-
         setFilter()
         setContent()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        initCameraHelper()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        clearCameraHelper()
+    }
+
+    private fun initCameraHelper() {
+        if (mCameraHelper == null) {
+            mCameraHelper = CameraHelper()
+            mCameraHelper?.setStateCallback(mStateListener)
+        }
+    }
+
+    private fun clearCameraHelper() {
+        if (mCameraHelper != null) {
+            mCameraHelper?.release()
+            mCameraHelper = null
+        }
+    }
+
+    private fun selectDevice(device: UsbDevice) {
+        mCameraHelper?.selectDevice(device)
+    }
+
+    private val mStateListener: ICameraHelper.StateCallback = object : ICameraHelper.StateCallback {
+        override fun onAttach(device: UsbDevice) {
+            selectDevice(device)
+        }
+
+        override fun onDeviceOpen(device: UsbDevice, isFirstOpen: Boolean) {
+            mCameraHelper?.openCamera()
+            //todo:
+            //device.deviceClass
+        }
+
+        override fun onCameraOpen(device: UsbDevice) {
+
+            mCameraHelper?.startPreview()
+
+            mCameraHelper?.uvcControl?.apply {
+                focusAuto = false
+                XLogger.d(
+                    """
+                        isZoomAbsoluteEnable ${isZoomAbsoluteEnable}
+                        isSharpnessEnable ${isSharpnessEnable}
+                        isSharpnessEnable ${isWhiteBalanceCompoAutoEnable}
+                    """.trimIndent()
+                )
+            }
+
+
+
+            val size = mCameraHelper?.previewSize
+            if (size != null) {
+                val width = size.width
+                val height = size.height
+                //auto aspect ratio
+                mBinding.surfaceView.setAspectRatio(width,height)
+            }
+
+            mCameraHelper?.addSurface(mBinding.surfaceView.holder.surface, false)
+
+            mCameraHelper?.setFrameCallback({ frame: ByteBuffer ->
+                if (mCustomFPS != null) {
+                    //Refresh FPS
+                    mCustomFPS?.doFrame()
+                }
+
+                //
+                val nv21 = ByteArray(frame.remaining())
+                frame[nv21, 0, nv21.size]
+                //
+//                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
+                val bitmap = convertRGBXToBitmap(nv21, size!!.width, size.height)
+                lifecycleScope.launch(Dispatchers.Main) {
+                    mBinding.imageView.setImage(bitmap)
+                }
+            }, UVCCamera.PIXEL_FORMAT_RGBX)
+
+            initFPS()
+        }
+
+
+
+
+        fun convertRGBXToBitmap(rgbxData: ByteArray, width: Int, height: Int): Bitmap {
+            // 每个像素四个字节：RGBX
+            val pixels = IntArray(width * height)
+
+            for (i in pixels.indices) {
+                val r = rgbxData[i * 4].toInt() and 0xFF // 红色通道
+                val g = rgbxData[i * 4 + 1].toInt() and 0xFF // 绿色通道
+                val b = rgbxData[i * 4 + 2].toInt() and 0xFF // 蓝色通道
+
+                // int x = rgbxData[i * 4 + 3] & 0xFF; // 未使用的字节
+
+                // 构建 ARGB 颜色，A（透明度）设为 255（不透明）
+                pixels[i] = 0xFF shl 24 or (r shl 16) or (g shl 8) or b
+            }
+
+            // 创建一个 Bitmap 对象
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+
+            return bitmap
+        }
+
+
+        override fun onCameraClose(device: UsbDevice) {
+            if (mCameraHelper != null) {
+                mCameraHelper!!.removeSurface(mBinding.surfaceView.holder.surface)
+            }
+
+            clearFPS()
+        }
+
+        override fun onDeviceClose(device: UsbDevice) {
+
+        }
+
+        override fun onDetach(device: UsbDevice) {
+
+        }
+
+        override fun onCancel(device: UsbDevice) {
+
+        }
+    }
+
+    private fun initFPS() {
+        val decimal = DecimalFormat(" #.0' fps'")
+        mCustomFPS = CustomFPS()
+        mCustomFPS?.addListener { fps ->
+            XLogger.d("FPS:${decimal.format(fps)}")
+        }
+    }
+
+    private fun clearFPS() {
+        if (mCustomFPS != null) {
+            mCustomFPS!!.release()
+            mCustomFPS = null
+        }
     }
 
 
@@ -394,8 +461,8 @@ open class UvcCameraFragment : CameraFragment() {
       Column(modifier = modifier) {
           ZoomAndFocus()
           BrightnessAndExposure()
-          GammaAndContrast()
           SharpnessAndSaturation()
+          GammaAndContrast()
           HueAnd()
       }
     }
@@ -427,7 +494,11 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = zoomSliderValue,
             onValueChange = { progress ->
                 zoomSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setZoom(progress.toInt())
+                mCameraHelper?.uvcControl?.zoomAbsolutePercent = progress.toInt()
+                mCameraHelper?.uvcControl?.zoomAbsolute = progress.toInt()
+//                mCameraHelper?.uvcControl?.zoomRelative = progress.toInt()
+                XLogger.d("缩放是否可以用:${mCameraHelper?.uvcControl?.isZoomAbsoluteEnable}")
+                XLogger.d("缩放是否可以用:${mCameraHelper?.uvcControl?.isZoomRelativeEnable}")
             }
         )
         SliderView(
@@ -436,7 +507,7 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = focusValue,
             onValueChange = { progress ->
                 focusValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setFocus(progress.toInt())
+                mCameraHelper?.uvcControl?.focusAbsolute = progress.toInt()
             }
         )
     }
@@ -446,8 +517,6 @@ open class UvcCameraFragment : CameraFragment() {
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
         val brightnessSliderValue = remember { mutableFloatStateOf(1f) }
         val exposureValue = remember { mutableFloatStateOf(1f) }
-
-
         LaunchedEffect(cameraUIState.brightnessMin,cameraUIState.exposureMin) {
             cameraUIState.apply {
                 if ((brightnessMax - brightnessMin) != 0f) {
@@ -466,7 +535,7 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = brightnessSliderValue,
             onValueChange = { progress ->
                 brightnessSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setBrightness(progress.toInt())
+                mCameraHelper?.uvcControl?.brightnessPercent = progress.toInt()
             }
         )
 
@@ -478,12 +547,10 @@ open class UvcCameraFragment : CameraFragment() {
                 exposureValue.floatValue = progress
                 //调成手动模式
                 XLogger.d("ae min:${cameraUIState.exposureMin} max${cameraUIState.exposureMax}")
-                (getCurrentCamera() as? CameraUVC)?.apply {
-                    val exposureModel = getExposureModel()
-                    if (exposureModel != ExposureModel.MANUAL_MODEL.value) {
-                        setExposureModel(ExposureModel.MANUAL_MODEL.value)
-                    }
-                    setExposure(progress.toInt())
+
+                mCameraHelper?.uvcControl?.apply {
+                    autoExposureMode =ExposureModel.MANUAL_MODEL.value
+                    exposureTimeAbsolute = progress.toInt()
                 }
             }
         )
@@ -514,8 +581,9 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = gammaSliderValue,
             onValueChange = { progress ->
                 gammaSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setGamma(progress.toInt())
-
+                mCameraHelper?.uvcControl?.apply {
+                    gamma = progress.toInt()
+                }
             }
         )
 
@@ -525,7 +593,9 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = contrastSliderValue,
             onValueChange = { progress ->
                 contrastSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setContrast(progress.toInt())
+                mCameraHelper?.uvcControl?.apply {
+                    contrast = progress.toInt()
+                }
             }
         )
     }
@@ -555,7 +625,10 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = sharpnessSliderValue,
             onValueChange = { progress ->
                 sharpnessSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setSharpness(progress.toInt())
+                mCameraHelper?.uvcControl?.apply {
+                    sharpness = progress.toInt()
+                }
+
             }
         )
 
@@ -565,7 +638,9 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = saturationSliderValue,
             onValueChange = { progress ->
                 saturationSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setSaturation(progress.toInt())
+                mCameraHelper?.uvcControl?.apply {
+                    saturation = progress.toInt()
+                }
             }
         )
     }
@@ -670,7 +745,9 @@ open class UvcCameraFragment : CameraFragment() {
             Text("AutoWhiteBalance")
             Switch(checked = autoWhiteBalance, onCheckedChange = {
                 autoWhiteBalance = it
-                (getCurrentCamera() as? CameraUVC)?.setAutoWhiteBalance(it)
+                mCameraHelper?.uvcControl?.apply {
+                    whiteBalanceAuto = it
+                }
             })
         }
     }
@@ -680,18 +757,19 @@ open class UvcCameraFragment : CameraFragment() {
         val scope = rememberCoroutineScope()
         Button(onClick = {
             scope.launch {
-                val camera = (getCurrentCamera() as? CameraUVC)
-                camera?.apply {
+                mCameraHelper?.uvcControl?.apply {
+                   resetGamma()
                     resetGamma()
                     resetHue()
                     resetContrast()
                     resetSharpness()
                     resetSaturation()
                     resetBrightness()
-                    resetZoom()
+                    resetZoomAbsolute()
                     resetGain()
-                    resetAutoFocus()
-                    //camera.setAutoFocus(false)
+                    resetFocusAuto()
+                    resetExposureTimeAbsolute()
+                    resetAutoExposureMode()
                 }
             }
         }) {
@@ -704,24 +782,28 @@ open class UvcCameraFragment : CameraFragment() {
         val scope = rememberCoroutineScope()
         IconButton(onClick = {
             scope.launch {
-                val camera = (getCurrentCamera() as? CameraUVC)
-                camera?.let {
-                    val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
-                    val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
-                    val info =
-                            "\nManufacturerName:    ${camera.device.manufacturerName}" +
-                            "\nDeviceId:    ${camera.device.deviceId}" +
-                            "\nDeviceName:  ${camera.device.deviceName}" +
-                            "\nDeviceClass: ${camera.device.deviceClass}" +
-                            "\nDeviceSubclass:  ${camera.device.deviceSubclass}" +
-                            "\nDeviceProtocol:  ${camera.device.deviceProtocol}" +
-                            "\nSerialNumber:    ${camera.device.serialNumber}" +
-                            "\nProductId:   ${camera.device.productId}" +
-                            "\nProductName: ${camera.device.productName}" +
-                            "\nVersion: ${camera.device.version}" +
-                            "\nVendorId:    ${camera.device.vendorId}"
-                    mViewModel.showDeviceInfoDialog(deviceInfo = info, show = true)
-                }
+
+//                mCameraHelper?.deviceList[0]?.deviceId
+
+
+//                val camera = (getCurrentCamera() as? CameraUVC)
+//                camera?.let {
+//                    val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
+//                    val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
+//                    val info =
+//                            "\nManufacturerName:    ${camera.device.manufacturerName}" +
+//                            "\nDeviceId:    ${camera.device.deviceId}" +
+//                            "\nDeviceName:  ${camera.device.deviceName}" +
+//                            "\nDeviceClass: ${camera.device.deviceClass}" +
+//                            "\nDeviceSubclass:  ${camera.device.deviceSubclass}" +
+//                            "\nDeviceProtocol:  ${camera.device.deviceProtocol}" +
+//                            "\nSerialNumber:    ${camera.device.serialNumber}" +
+//                            "\nProductId:   ${camera.device.productId}" +
+//                            "\nProductName: ${camera.device.productName}" +
+//                            "\nVersion: ${camera.device.version}" +
+//                            "\nVendorId:    ${camera.device.vendorId}"
+//                    mViewModel.showDeviceInfoDialog(deviceInfo = info, show = true)
+//                }
             }
         }) {
             Icon(imageVector = Icons.Default.Info, contentDescription = "")
@@ -747,7 +829,8 @@ open class UvcCameraFragment : CameraFragment() {
             sliderValue = hueSliderValue,
             onValueChange = { progress ->
                 hueSliderValue.floatValue = progress
-                (getCurrentCamera() as? CameraUVC)?.setHue(progress.toInt())
+                mCameraHelper?.uvcControl?.huePercent = progress.toInt()
+//                (getCurrentCamera() as? CameraUVC)?.setHue(progress.toInt())
             }
         )
     }
@@ -912,176 +995,176 @@ open class UvcCameraFragment : CameraFragment() {
         }
     }
 
-    override fun onCameraState(self: MultiCameraClient.ICamera, code: ICameraStateCallBack.State, msg: String?) {
-        val camera = (getCurrentCamera() as? CameraUVC)
-        when (code) {
-            ICameraStateCallBack.State.OPENED -> {
-//                mViewBinding.imageView.onResume()
-                XLogger.d("mCameraClient 相机打开-----》")
-                camera?.apply {
-                    setAutoFocus(false)//画面不晃动
-                    setAutoWhiteBalance(true)
-//                    (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
-
-                    val autoWhiteBalance = getAutoWhiteBalance() ?: true
-                    val autoFocus = getAutoFocus() ?: true
-                    val contrastMin = getContrastMin()?.toFloat() ?: 0f
-                    val contrastMax = getContrastMax()?.toFloat() ?: 0f
-                    val contrast = getContrast()?.toFloat() ?: 0f
-                    val sharpness = getSharpness()?.toFloat() ?: 0f
-                    val sharpnessMax = getSharpnessMax()?.toFloat() ?: 0f
-                    val sharpnessMin = getSharpnessMin()?.toFloat() ?: 0f
-                    val hue = getHue()?.toFloat() ?: 0f
-                    val hueMax = getHueMax()?.toFloat() ?: 0f
-                    val hueMin = getHueMin()?.toFloat() ?: 0f
-                    val gain = getGain()?.toFloat() ?: 0f
-                    val gainMax = getGainMax()?.toFloat() ?: 0f
-                    val gainMin = getGainMin()?.toFloat() ?: 0f
-                    val gamma = getGamma()?.toFloat() ?: 0f
-                    val gammaMax = getGammaMax()?.toFloat() ?: 0f
-                    val gammaMin = getGammaMin()?.toFloat() ?: 0f
-                    val saturation = getSaturation()?.toFloat() ?: 0f
-                    val saturationMax = getSaturationMax()?.toFloat() ?: 0f
-                    val saturationMin = getSaturationMin()?.toFloat() ?: 0f
-                    val brightness = getBrightness()?.toFloat() ?: 0f
-                    val brightnessMax = getBrightnessMax()?.toFloat() ?: 0f
-                    val brightnessMin = getBrightnessMin()?.toFloat() ?: 0f
-                    val zoom = getZoom()?.toFloat() ?: 1f
-                    val zoomMax = getZoomMax()?.toFloat() ?: 1f
-                    val zoomMin = getZoomMin()?.toFloat() ?: 1f
-                    val exposure = getExposure()?.toFloat() ?: 1f
-                    val exposureMax = getExposureMax()?.toFloat() ?: 1f
-                    val exposureMin = getExposureMin()?.toFloat() ?: 1f
-                    val focus = getFocus()?.toFloat() ?: 1f
-                    val focusMax = getFocusMax()?.toFloat() ?: 1f
-                    val focusMin = getFocusMin()?.toFloat() ?: 1f
-                    val exposureModel = getExposureModel() ?: 1
-                    val exposureModelMax = getExposureModelMax() ?: 1
-                    val exposureModelMin = getExposureModelMin() ?: 1
-
-                    val uiState = UvcCameraUIState(
-                        autoWhiteBalance = autoWhiteBalance,
-                        autoFocus = autoFocus,
-                        zoom = zoom,
-                        zoomMax = zoomMax,
-                        zoomMin = zoomMin,
-                        brightness = brightness,
-                        brightnessMax = brightnessMax,
-                        brightnessMin = brightnessMin,
-                        sharpness = sharpness,
-                        sharpnessMax = sharpnessMax,
-                        sharpnessMin = sharpnessMin,
-                        contrast = contrast,
-                        contrastMax = contrastMax,
-                        contrastMin = contrastMin,
-                        hue = hue,
-                        hueMax = hueMax,
-                        hueMin = hueMin,
-                        saturation = saturation,
-                        saturationMax = saturationMax,
-                        saturationMin = saturationMin,
-                        gain = gain,
-                        gainMax = gainMax,
-                        gainMin = gainMin,
-                        gamma = gamma,
-                        gammaMax = gammaMax,
-                        gammaMin = gammaMin,
-                        exposureMax = exposureMax,
-                        exposureMin = exposureMin,
-                        exposure = exposure,
-                        focusMax = focusMax,
-                        focusMin = focusMin,
-                        focus = focus,
-                        exposureModel = exposureModel,
-                        exposureModelMax = exposureModelMax,
-                        exposureModelMin = exposureModelMin
-                    )
-
-                    XLogger.d("参数:${uiState}")
-                    mViewModel.updateParams(state = uiState)
-
-                    val allPreviewSize = getAllPreviewSizes().onEach {
-                        XLogger.d("所有的分辨率：${it.width}*${it.height}")
-                    }
-                    val maxResolution = allPreviewSize.maxByOrNull { it.width * it.height }
-                    XLogger.d("最大的分辨率：${maxResolution?.width} * ${maxResolution?.height}")
-                    maxResolution?.let {
-                        //todo:如何更新预览尺寸
-//                        this.setRenderSize(it.width,it.height)
-//                        updateResolution(it.width,it.height)
-                    }
-                    setEncodeDataCallBack(object : IEncodeDataCallBack {
-                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
-                            XLogger.d("编码:${type.name}")
-                        }
-                    })
-
-                    addPreviewDataCallBack(object : IPreviewDataCallBack {
-                        override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
-                            //YUV420 转bitmap
+//    override fun onCameraState(self: MultiCameraClient.ICamera, code: ICameraStateCallBack.State, msg: String?) {
+//        val camera = (getCurrentCamera() as? CameraUVC)
+//        when (code) {
+//            ICameraStateCallBack.State.OPENED -> {
+////                mViewBinding.imageView.onResume()
+//                XLogger.d("mCameraClient 相机打开-----》")
+//                camera?.apply {
+//                    setAutoFocus(false)//画面不晃动
+//                    setAutoWhiteBalance(true)
+////                    (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
+//
+//                    val autoWhiteBalance = getAutoWhiteBalance() ?: true
+//                    val autoFocus = getAutoFocus() ?: true
+//                    val contrastMin = getContrastMin()?.toFloat() ?: 0f
+//                    val contrastMax = getContrastMax()?.toFloat() ?: 0f
+//                    val contrast = getContrast()?.toFloat() ?: 0f
+//                    val sharpness = getSharpness()?.toFloat() ?: 0f
+//                    val sharpnessMax = getSharpnessMax()?.toFloat() ?: 0f
+//                    val sharpnessMin = getSharpnessMin()?.toFloat() ?: 0f
+//                    val hue = getHue()?.toFloat() ?: 0f
+//                    val hueMax = getHueMax()?.toFloat() ?: 0f
+//                    val hueMin = getHueMin()?.toFloat() ?: 0f
+//                    val gain = getGain()?.toFloat() ?: 0f
+//                    val gainMax = getGainMax()?.toFloat() ?: 0f
+//                    val gainMin = getGainMin()?.toFloat() ?: 0f
+//                    val gamma = getGamma()?.toFloat() ?: 0f
+//                    val gammaMax = getGammaMax()?.toFloat() ?: 0f
+//                    val gammaMin = getGammaMin()?.toFloat() ?: 0f
+//                    val saturation = getSaturation()?.toFloat() ?: 0f
+//                    val saturationMax = getSaturationMax()?.toFloat() ?: 0f
+//                    val saturationMin = getSaturationMin()?.toFloat() ?: 0f
+//                    val brightness = getBrightness()?.toFloat() ?: 0f
+//                    val brightnessMax = getBrightnessMax()?.toFloat() ?: 0f
+//                    val brightnessMin = getBrightnessMin()?.toFloat() ?: 0f
+//                    val zoom = getZoom()?.toFloat() ?: 1f
+//                    val zoomMax = getZoomMax()?.toFloat() ?: 1f
+//                    val zoomMin = getZoomMin()?.toFloat() ?: 1f
+//                    val exposure = getExposure()?.toFloat() ?: 1f
+//                    val exposureMax = getExposureMax()?.toFloat() ?: 1f
+//                    val exposureMin = getExposureMin()?.toFloat() ?: 1f
+//                    val focus = getFocus()?.toFloat() ?: 1f
+//                    val focusMax = getFocusMax()?.toFloat() ?: 1f
+//                    val focusMin = getFocusMin()?.toFloat() ?: 1f
+//                    val exposureModel = getExposureModel() ?: 1
+//                    val exposureModelMax = getExposureModelMax() ?: 1
+//                    val exposureModelMin = getExposureModelMin() ?: 1
+//
+//                    val uiState = UvcCameraUIState(
+//                        autoWhiteBalance = autoWhiteBalance,
+//                        autoFocus = autoFocus,
+//                        zoom = zoom,
+//                        zoomMax = zoomMax,
+//                        zoomMin = zoomMin,
+//                        brightness = brightness,
+//                        brightnessMax = brightnessMax,
+//                        brightnessMin = brightnessMin,
+//                        sharpness = sharpness,
+//                        sharpnessMax = sharpnessMax,
+//                        sharpnessMin = sharpnessMin,
+//                        contrast = contrast,
+//                        contrastMax = contrastMax,
+//                        contrastMin = contrastMin,
+//                        hue = hue,
+//                        hueMax = hueMax,
+//                        hueMin = hueMin,
+//                        saturation = saturation,
+//                        saturationMax = saturationMax,
+//                        saturationMin = saturationMin,
+//                        gain = gain,
+//                        gainMax = gainMax,
+//                        gainMin = gainMin,
+//                        gamma = gamma,
+//                        gammaMax = gammaMax,
+//                        gammaMin = gammaMin,
+//                        exposureMax = exposureMax,
+//                        exposureMin = exposureMin,
+//                        exposure = exposure,
+//                        focusMax = focusMax,
+//                        focusMin = focusMin,
+//                        focus = focus,
+//                        exposureModel = exposureModel,
+//                        exposureModelMax = exposureModelMax,
+//                        exposureModelMin = exposureModelMin
+//                    )
+//
+//                    XLogger.d("参数:${uiState}")
+//                    mViewModel.updateParams(state = uiState)
+//
+//                    val allPreviewSize = getAllPreviewSizes().onEach {
+//                        XLogger.d("所有的分辨率：${it.width}*${it.height}")
+//                    }
+//                    val maxResolution = allPreviewSize.maxByOrNull { it.width * it.height }
+//                    XLogger.d("最大的分辨率：${maxResolution?.width} * ${maxResolution?.height}")
+//                    maxResolution?.let {
+//                        //todo:如何更新预览尺寸
+////                        this.setRenderSize(it.width,it.height)
+////                        updateResolution(it.width,it.height)
+//                    }
+//                    setEncodeDataCallBack(object : IEncodeDataCallBack {
+//                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
+//                            XLogger.d("编码:${type.name}")
+//                        }
+//                    })
+//
+//                    addPreviewDataCallBack(object : IPreviewDataCallBack {
+//                        override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
+//                            //YUV420 转bitmap
+////                            data?.let {
+////                                //速度快一些 但不清晰
+////                                val bitmap = yuv420ToBitmap(data, width, height)
+////                                mViewBinding.imageView.setImage(bitmap)
+////                                return@let
+////                            }
+////                            return;
+//
 //                            data?.let {
-//                                //速度快一些 但不清晰
-//                                val bitmap = yuv420ToBitmap(data, width, height)
-//                                mViewBinding.imageView.setImage(bitmap)
-//                                return@let
+//                                val fromata = determineImageFormat(data, width, height)
+////                                XLogger.d("新的数据来了------->${fromata}    ------->${format} ${data?.size} width:${width} height:${height}")
+//
 //                            }
-//                            return;
-
-                            data?.let {
-                                val fromata = determineImageFormat(data, width, height)
-//                                XLogger.d("新的数据来了------->${fromata}    ------->${format} ${data?.size} width:${width} height:${height}")
-
-                            }
-
-
-                            mLifecycleOwner.launch(Dispatchers.IO) {
-                                //颜色有问题
-                                val newData = cropNV21(
-                                    data,
-                                    width,
-                                    height,
-                                    mCurrentAspectWithP.toFloat() / mCurrentAspectHeightP
-                                )
-                                newData?.let {
-//                                    logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
-                                    if (mRenderWidth != newData.width) {
-                                        mRenderWidth = newData.width
-                                    }
-                                    if (mRenderHeight != newData.height) {
-                                        mRenderHeight = newData.height
-                                    }
-
-
-                                    val bitmap =
-                                        yuv420ToBitmap(newData.data, newData.width, newData.height)
-                                    mBinding.imageView.setImage(bitmap)
-                                    return@launch
-                                }
-                            }
-                        }
-                    })
-                    setEncodeDataCallBack(object : IEncodeDataCallBack {
-                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
-                            logWithInterval("数据来了：${size} $timestamp")
-                        }
-                    })
-//                XLogger.d("亮度 最大:${max} 最小：${min} zoom:${zoom}")
-                }
-            }
-
-            ICameraStateCallBack.State.CLOSED -> {
-                // TODO:关闭
-                XLogger.d("mCameraClient 相机关闭-----》")
-//                camera?.closeCamera()
-//                mViewBinding.imageView.onPause()
-            }
-
-            ICameraStateCallBack.State.ERROR -> {
-                XLogger.d("mCameraClient 相机错误-----》")
-                //todo: error
-            }
-        }
-    }
+//
+//
+//                            mLifecycleOwner.launch(Dispatchers.IO) {
+//                                //颜色有问题
+//                                val newData = cropNV21(
+//                                    data,
+//                                    width,
+//                                    height,
+//                                    mCurrentAspectWithP.toFloat() / mCurrentAspectHeightP
+//                                )
+//                                newData?.let {
+////                                    logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
+//                                    if (mRenderWidth != newData.width) {
+//                                        mRenderWidth = newData.width
+//                                    }
+//                                    if (mRenderHeight != newData.height) {
+//                                        mRenderHeight = newData.height
+//                                    }
+//
+//
+//                                    val bitmap =
+//                                        yuv420ToBitmap(newData.data, newData.width, newData.height)
+//                                    mBinding.imageView.setImage(bitmap)
+//                                    return@launch
+//                                }
+//                            }
+//                        }
+//                    })
+//                    setEncodeDataCallBack(object : IEncodeDataCallBack {
+//                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
+//                            logWithInterval("数据来了：${size} $timestamp")
+//                        }
+//                    })
+////                XLogger.d("亮度 最大:${max} 最小：${min} zoom:${zoom}")
+//                }
+//            }
+//
+//            ICameraStateCallBack.State.CLOSED -> {
+//                // TODO:关闭
+//                XLogger.d("mCameraClient 相机关闭-----》")
+////                camera?.closeCamera()
+////                mViewBinding.imageView.onPause()
+//            }
+//
+//            ICameraStateCallBack.State.ERROR -> {
+//                XLogger.d("mCameraClient 相机错误-----》")
+//                //todo: error
+//            }
+//        }
+//    }
 
     fun yuv420ToBitmap(yuv420Data: ByteArray, width: Int, height: Int): Bitmap? {
         // 创建 YuvImage 对象

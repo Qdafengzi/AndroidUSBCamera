@@ -113,6 +113,12 @@ public class UVCCamera {
 	public static final int STATUS_ATTRIBUTE_FAILURE_CHANGE = 0x02;
 	public static final int STATUS_ATTRIBUTE_UNKNOWN = 0xff;
 
+	public static final int UVC_AUTO_EXPOSURE_MODE_MANUAL = 1; // manual exposure time, manual iris
+	public static final int UVC_AUTO_EXPOSURE_MODE_AUTO = 2; // auto exposure time, auto iris
+	public static final int UVC_AUTO_EXPOSURE_MODE_SHUTTER_PRIORITY = 4; // manual exposure time, auto iris
+	public static final int UVC_AUTO_EXPOSURE_MODE_APERTURE_PRIORITY = 8; // auto exposure time, manual iris
+
+
 	private static boolean isLoaded;
 	static {
 		if (!isLoaded) {
@@ -611,23 +617,27 @@ public class UVCCamera {
 	public synchronized int getExposureModel(final int model) {
 		int result = 0;
 		if (mNativePtr != 0) {
-			nativeUpdateExposureModeLimit(mNativePtr);
+			int i = nativeUpdateExposureModeLimit(mNativePtr);
+			XLogWrapper.d(TAG,"get ae model------>:"+i);
 			final float range = Math.abs(mExposureModeMax - mExposureModeMin);
 			if (range > 0) {
 				result = (int) ((model - mExposureModeMin) * 100.f / range);
+				XLogWrapper.d(TAG,"曝光模式 :"+result);
 			}
 		}
 		return result;
 	}
 
 	public synchronized int getExposureModel() {
-		return getExposureModel(nativeGetExposureMode(mNativePtr));
+		nativeUpdateExposureModeLimit(mNativePtr);
+		return nativeGetExposureMode(mNativePtr);
 	}
 
 
 	public synchronized void resetExposureModel() {
 		if (mNativePtr != 0) {
-			nativeSetExposureMode(mNativePtr, mExposureModeDef);
+			//自动曝光模式
+			nativeSetExposureMode(mNativePtr, 2);
 		}
 	}
 
@@ -640,7 +650,7 @@ public class UVCCamera {
 	}
 
 
-
+//========================================================================================================================
 	/**
 	 * 曝光
 	 * @param exposure 曝光值
@@ -1129,8 +1139,8 @@ public class UVCCamera {
 	    	    	nativeUpdateZoomLimit(mNativePtr);
 	    	    	nativeUpdateWhiteBlanceLimit(mNativePtr);
 	    	    	nativeUpdateFocusLimit(mNativePtr);
-					nativeUpdateExposureLimit(mNativePtr);
 					nativeUpdateExposureModeLimit(mNativePtr);
+					nativeUpdateExposureLimit(mNativePtr);
 
     	    	}
     	    	if (DEBUG) {
