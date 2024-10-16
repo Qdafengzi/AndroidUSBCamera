@@ -159,7 +159,7 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
         }
     }
 
-    public void onPreviewFrame_new(final byte[] data, final int width, final int height) {
+    public void onPreviewFrame1(final byte[] data, final int width, final int height) {
         if (glRgbBuffer == null || glRgbBuffer.capacity() < width * height) {
             // Allocate a new IntBuffer if necessary
             glRgbBuffer = IntBuffer.allocate(width * height);
@@ -197,7 +197,14 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
     }
 
 
+    /**
+     * 原始
+     * @param data
+     * @param width
+     * @param height
+     */
     public void onPreviewFrame(final byte[] data, final int width, final int height) {
+        XLogger.d("onPreviewFrame----."+width +" "+height);
         if (glRgbBuffer == null) {
             glRgbBuffer = IntBuffer.allocate(width * height);
         }
@@ -212,6 +219,37 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
                     adjustImageScaling();
                 }
 
+                if (drawVideoListener != null) {
+                    drawVideoListener.runVideoDraw();
+                }
+            });
+        }
+    }
+
+    public void onPreviewFrame2(final byte[] data, final int width, final int height) {
+        // 检查是否需要初始化 glRgbBuffer
+        if (glRgbBuffer == null || glRgbBuffer.capacity() != width * height) {
+            glRgbBuffer = IntBuffer.allocate(width * height);
+        }
+
+        if (runOnDraw.isEmpty()) {
+            runOnDraw(() -> {
+                // 将 RGBA 数据转换为 IntBuffer
+                // 每个像素 4 字节 (RGBA) 转换为一个 int
+                // 使用 ByteBuffer.wrap(data) 将字节数组包装成 ByteBuffer，然后转换为 IntBuffer
+                ByteBuffer.wrap(data).asIntBuffer().get(glRgbBuffer.array());
+
+                // 加载纹理
+                glTextureId = OpenGlUtils.loadTexture(glRgbBuffer, width, height, glTextureId);
+
+                // 检查是否需要调整图像缩放
+                if (imageWidth != width) {
+                    imageWidth = width;
+                    imageHeight = height;
+                    adjustImageScaling();
+                }
+
+                // 执行视频绘制监听器
                 if (drawVideoListener != null) {
                     drawVideoListener.runVideoDraw();
                 }

@@ -30,11 +30,11 @@ android {
         }
     }
 
-	externalNativeBuild {
-		ndkBuild {
-			path file('src/main/jni/Android.mk')
-		}
-	}
+//	externalNativeBuild {
+//		ndkBuild {
+//			path file('src/main/jni/Android.mk')
+//		}
+//	}
 
 	namespace "com.jiangdg"
 	ndkVersion rootProject.ext.ndkVersion

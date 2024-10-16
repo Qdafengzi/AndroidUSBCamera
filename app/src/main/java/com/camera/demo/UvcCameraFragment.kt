@@ -1,5 +1,7 @@
 package com.camera.demo
 
+import android.app.appsearch.AppSearchSchema.PropertyConfig
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -9,11 +11,15 @@ import android.hardware.usb.UsbDevice
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaScannerConnection
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.SurfaceHolder
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +65,7 @@ import androidx.lifecycle.lifecycleScope
 import com.camera.demo.databinding.FragmentDemo02Binding
 import com.camera.utils.XLogger
 import com.herohan.uvcapp.CameraHelper
+import com.herohan.uvcapp.CameraPreviewConfig
 import com.herohan.uvcapp.ICameraHelper
 import com.serenegiant.usb.Size
 import com.serenegiant.usb.UVCCamera
@@ -84,6 +91,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.text.DecimalFormat
 
@@ -177,8 +186,8 @@ open class UvcCameraFragment : Fragment() {
     var mRenderWidth = 1920
     var mRenderHeight = 1920
 
-    val DEFAULT_WIDTH: Int = 640
-    val DEFAULT_HEIGHT: Int = 480
+    val DEFAULT_WIDTH: Int = 3840
+    val DEFAULT_HEIGHT: Int = 2880
 
 
     var mCurrentAspectWithP = 1
@@ -227,6 +236,10 @@ open class UvcCameraFragment : Fragment() {
         GPUImageHueFilter()
     }
 
+    private val mNV21ToBitmap by lazy {
+        NV21ToBitmap(requireContext())
+    }
+
 
     private lateinit var mBinding: FragmentDemo02Binding
 
@@ -270,6 +283,8 @@ open class UvcCameraFragment : Fragment() {
     private fun initCameraHelper() {
         if (mCameraHelper == null) {
             mCameraHelper = CameraHelper()
+//            mCameraHelper?.previewSize = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
+
             mCameraHelper?.setStateCallback(mStateListener)
         }
     }
@@ -296,6 +311,9 @@ open class UvcCameraFragment : Fragment() {
         }
 
         override fun onCameraOpen(device: UsbDevice) {
+            mCameraHelper?.supportedSizeList?.forEach {
+            }
+//            mCameraHelper?.previewSize = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
 
             mCameraHelper?.startPreview()
 
@@ -394,6 +412,77 @@ open class UvcCameraFragment : Fragment() {
             mCustomFPS!!.release()
             mCustomFPS = null
         }
+    }
+
+    fun yuv420ToBitmap(yuv420Data: ByteArray, width: Int, height: Int): Bitmap? {
+        // 创建 YuvImage 对象
+        val yuvImage = YuvImage(yuv420Data, ImageFormat.NV21, width, height, null)
+
+        // 使用 ByteArrayOutputStream 将 YuvImage 转换为 Bitmap
+        val outputStream = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, outputStream)
+
+        // 将输出流转换为 Bitmap
+        val bitmapArray = outputStream.toByteArray()
+        return BitmapFactory.decodeByteArray(bitmapArray, 0, bitmapArray.size)
+    }
+
+    data class CroppedNV21(
+        val data: ByteArray,
+        val width: Int,
+        val height: Int
+    )
+
+    fun cropNV21(
+        data: ByteArray?,
+        width: Int,
+        height: Int,
+        aspectRatio: Float
+    ): CroppedNV21? {
+        if (data == null) return null
+
+        // Calculate the new width and height based on the aspect ratio
+        val newWidth: Int
+        val newHeight: Int
+
+        if (aspectRatio == 1.0f) {
+            // For 1:1 aspect ratio
+            newWidth = minOf(width, height)
+            newHeight = newWidth
+        } else {
+            if (width.toFloat() / height > aspectRatio) {
+                newHeight = height
+                newWidth = (height * aspectRatio).toInt()
+            } else {
+                newWidth = width
+                newHeight = (width / aspectRatio).toInt()
+            }
+        }
+
+        // Calculate the starting points for cropping
+        val cropX = (width - newWidth) / 2
+        val cropY = (height - newHeight) / 2
+
+        // Calculate size of the cropped frame
+        val croppedSize = newWidth * newHeight * 3 / 2
+        val croppedData = ByteArray(croppedSize)
+
+        // Iterate over the height of the crop area
+        for (y in 0 until newHeight) {
+            // Crop Y plane
+            val srcYPos = (cropY + y) * width + cropX
+            val dstYPos = y * newWidth
+            System.arraycopy(data, srcYPos, croppedData, dstYPos, newWidth)
+
+            // Crop UV plane (only process every second row for UV)
+            if (y % 2 == 0) {
+                val srcUVPos = width * height + ((cropY / 2) + (y / 2)) * width + cropX
+                val dstUVPos = newWidth * newHeight + (y / 2) * newWidth
+                System.arraycopy(data, srcUVPos, croppedData, dstUVPos, newWidth)
+            }
+        }
+
+        return CroppedNV21(croppedData, newWidth, newHeight)
     }
 
 
@@ -943,7 +1032,7 @@ open class UvcCameraFragment : Fragment() {
                     resetFocusAbsolute()
                     resetGamma()
                     resetHue()
-
+                    mCameraHelper?.uvcControl?.focusAuto = false
 
                     mGPUImageGammaFilter.setGamma(1f)
                     mGPUImageHueFilter.setHue(0f)
@@ -1091,6 +1180,14 @@ open class UvcCameraFragment : Fragment() {
                             }
 
                             override fun onRecordError(e: Exception?) {
+                                scope.launch {
+                                    withContext(Dispatchers.Main) {
+                                        mGpuImageMovieWriter.stopRecording {
+                                           Toast.makeText(requireContext(),"录制错误",Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+
                                 XLogger.d("录制-------->onRecordError:${e?.message}")
                             }
                         })
@@ -1108,7 +1205,8 @@ open class UvcCameraFragment : Fragment() {
                         mGpuImageMovieWriter.stopRecording {
                             XLogger.d("录制已停止")
                             val videoFile = File(requireContext().cacheDir, "record.mp4")
-                            getVideoFrameRate(videoFile.absolutePath)
+                            saveVideoToGallery(requireContext(), videoFile, videoFile.name)
+                            XLogger.d("录制的视频:${videoFile.absolutePath}")
                         }
                     }
                 }
@@ -1159,251 +1257,58 @@ open class UvcCameraFragment : Fragment() {
         }
     }
 
-//    override fun onCameraState(self: MultiCameraClient.ICamera, code: ICameraStateCallBack.State, msg: String?) {
-//        val camera = (getCurrentCamera() as? CameraUVC)
-//        when (code) {
-//            ICameraStateCallBack.State.OPENED -> {
-////                mViewBinding.imageView.onResume()
-//                XLogger.d("mCameraClient 相机打开-----》")
-//                camera?.apply {
-//                    setAutoFocus(false)//画面不晃动
-//                    setAutoWhiteBalance(true)
-////                    (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
-//
-//                    val autoWhiteBalance = getAutoWhiteBalance() ?: true
-//                    val autoFocus = getAutoFocus() ?: true
-//                    val contrastMin = getContrastMin()?.toFloat() ?: 0f
-//                    val contrastMax = getContrastMax()?.toFloat() ?: 0f
-//                    val contrast = getContrast()?.toFloat() ?: 0f
-//                    val sharpness = getSharpness()?.toFloat() ?: 0f
-//                    val sharpnessMax = getSharpnessMax()?.toFloat() ?: 0f
-//                    val sharpnessMin = getSharpnessMin()?.toFloat() ?: 0f
-//                    val hue = getHue()?.toFloat() ?: 0f
-//                    val hueMax = getHueMax()?.toFloat() ?: 0f
-//                    val hueMin = getHueMin()?.toFloat() ?: 0f
-//                    val gain = getGain()?.toFloat() ?: 0f
-//                    val gainMax = getGainMax()?.toFloat() ?: 0f
-//                    val gainMin = getGainMin()?.toFloat() ?: 0f
-//                    val gamma = getGamma()?.toFloat() ?: 0f
-//                    val gammaMax = getGammaMax()?.toFloat() ?: 0f
-//                    val gammaMin = getGammaMin()?.toFloat() ?: 0f
-//                    val saturation = getSaturation()?.toFloat() ?: 0f
-//                    val saturationMax = getSaturationMax()?.toFloat() ?: 0f
-//                    val saturationMin = getSaturationMin()?.toFloat() ?: 0f
-//                    val brightness = getBrightness()?.toFloat() ?: 0f
-//                    val brightnessMax = getBrightnessMax()?.toFloat() ?: 0f
-//                    val brightnessMin = getBrightnessMin()?.toFloat() ?: 0f
-//                    val zoom = getZoom()?.toFloat() ?: 1f
-//                    val zoomMax = getZoomMax()?.toFloat() ?: 1f
-//                    val zoomMin = getZoomMin()?.toFloat() ?: 1f
-//                    val exposure = getExposure()?.toFloat() ?: 1f
-//                    val exposureMax = getExposureMax()?.toFloat() ?: 1f
-//                    val exposureMin = getExposureMin()?.toFloat() ?: 1f
-//                    val focus = getFocus()?.toFloat() ?: 1f
-//                    val focusMax = getFocusMax()?.toFloat() ?: 1f
-//                    val focusMin = getFocusMin()?.toFloat() ?: 1f
-//                    val exposureModel = getExposureModel() ?: 1
-//                    val exposureModelMax = getExposureModelMax() ?: 1
-//                    val exposureModelMin = getExposureModelMin() ?: 1
-//
-//                    val uiState = UvcCameraUIState(
-//                        autoWhiteBalance = autoWhiteBalance,
-//                        autoFocus = autoFocus,
-//                        zoom = zoom,
-//                        zoomMax = zoomMax,
-//                        zoomMin = zoomMin,
-//                        brightness = brightness,
-//                        brightnessMax = brightnessMax,
-//                        brightnessMin = brightnessMin,
-//                        sharpness = sharpness,
-//                        sharpnessMax = sharpnessMax,
-//                        sharpnessMin = sharpnessMin,
-//                        contrast = contrast,
-//                        contrastMax = contrastMax,
-//                        contrastMin = contrastMin,
-//                        hue = hue,
-//                        hueMax = hueMax,
-//                        hueMin = hueMin,
-//                        saturation = saturation,
-//                        saturationMax = saturationMax,
-//                        saturationMin = saturationMin,
-//                        gain = gain,
-//                        gainMax = gainMax,
-//                        gainMin = gainMin,
-//                        gamma = gamma,
-//                        gammaMax = gammaMax,
-//                        gammaMin = gammaMin,
-//                        exposureMax = exposureMax,
-//                        exposureMin = exposureMin,
-//                        exposure = exposure,
-//                        focusMax = focusMax,
-//                        focusMin = focusMin,
-//                        focus = focus,
-//                        exposureModel = exposureModel,
-//                        exposureModelMax = exposureModelMax,
-//                        exposureModelMin = exposureModelMin
-//                    )
-//
-//                    XLogger.d("参数:${uiState}")
-//                    mViewModel.updateParams(state = uiState)
-//
-//                    val allPreviewSize = getAllPreviewSizes().onEach {
-//                        XLogger.d("所有的分辨率：${it.width}*${it.height}")
-//                    }
-//                    val maxResolution = allPreviewSize.maxByOrNull { it.width * it.height }
-//                    XLogger.d("最大的分辨率：${maxResolution?.width} * ${maxResolution?.height}")
-//                    maxResolution?.let {
-//                        //todo:如何更新预览尺寸
-////                        this.setRenderSize(it.width,it.height)
-////                        updateResolution(it.width,it.height)
-//                    }
-//                    setEncodeDataCallBack(object : IEncodeDataCallBack {
-//                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
-//                            XLogger.d("编码:${type.name}")
-//                        }
-//                    })
-//
-//                    addPreviewDataCallBack(object : IPreviewDataCallBack {
-//                        override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
-//                            //YUV420 转bitmap
-////                            data?.let {
-////                                //速度快一些 但不清晰
-////                                val bitmap = yuv420ToBitmap(data, width, height)
-////                                mViewBinding.imageView.setImage(bitmap)
-////                                return@let
-////                            }
-////                            return;
-//
-//                            data?.let {
-//                                val fromata = determineImageFormat(data, width, height)
-////                                XLogger.d("新的数据来了------->${fromata}    ------->${format} ${data?.size} width:${width} height:${height}")
-//
-//                            }
-//
-//
-//                            mLifecycleOwner.launch(Dispatchers.IO) {
-//                                //颜色有问题
-//                                val newData = cropNV21(
-//                                    data,
-//                                    width,
-//                                    height,
-//                                    mCurrentAspectWithP.toFloat() / mCurrentAspectHeightP
-//                                )
-//                                newData?.let {
-////                                    logWithInterval("new data------->${format} ${newData.data.size} width:${newData.width} height:${newData.height}")
-//                                    if (mRenderWidth != newData.width) {
-//                                        mRenderWidth = newData.width
-//                                    }
-//                                    if (mRenderHeight != newData.height) {
-//                                        mRenderHeight = newData.height
-//                                    }
-//
-//
-//                                    val bitmap =
-//                                        yuv420ToBitmap(newData.data, newData.width, newData.height)
-//                                    mBinding.imageView.setImage(bitmap)
-//                                    return@launch
-//                                }
-//                            }
-//                        }
-//                    })
-//                    setEncodeDataCallBack(object : IEncodeDataCallBack {
-//                        override fun onEncodeData(type: IEncodeDataCallBack.DataType, buffer: ByteBuffer, offset: Int, size: Int, timestamp: Long) {
-//                            logWithInterval("数据来了：${size} $timestamp")
-//                        }
-//                    })
-////                XLogger.d("亮度 最大:${max} 最小：${min} zoom:${zoom}")
-//                }
-//            }
-//
-//            ICameraStateCallBack.State.CLOSED -> {
-//                // TODO:关闭
-//                XLogger.d("mCameraClient 相机关闭-----》")
-////                camera?.closeCamera()
-////                mViewBinding.imageView.onPause()
-//            }
-//
-//            ICameraStateCallBack.State.ERROR -> {
-//                XLogger.d("mCameraClient 相机错误-----》")
-//                //todo: error
-//            }
-//        }
-//    }
 
-    fun yuv420ToBitmap(yuv420Data: ByteArray, width: Int, height: Int): Bitmap? {
-        // 创建 YuvImage 对象
-        val yuvImage = YuvImage(yuv420Data, ImageFormat.NV21, width, height, null)
-
-        // 使用 ByteArrayOutputStream 将 YuvImage 转换为 Bitmap
-        val outputStream = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, outputStream)
-
-        // 将输出流转换为 Bitmap
-        val bitmapArray = outputStream.toByteArray()
-        return BitmapFactory.decodeByteArray(bitmapArray, 0, bitmapArray.size)
-    }
-
-
-    companion object {
-    }
-
-
-    data class CroppedNV21(
-        val data: ByteArray,
-        val width: Int,
-        val height: Int
-    )
-
-    fun cropNV21(
-        data: ByteArray?,
-        width: Int,
-        height: Int,
-        aspectRatio: Float
-    ): CroppedNV21? {
-        if (data == null) return null
-
-        // Calculate the new width and height based on the aspect ratio
-        val newWidth: Int
-        val newHeight: Int
-
-        if (aspectRatio == 1.0f) {
-            // For 1:1 aspect ratio
-            newWidth = minOf(width, height)
-            newHeight = newWidth
-        } else {
-            if (width.toFloat() / height > aspectRatio) {
-                newHeight = height
-                newWidth = (height * aspectRatio).toInt()
-            } else {
-                newWidth = width
-                newHeight = (width / aspectRatio).toInt()
-            }
+    fun saveImageToGallery(context: Context, bitmap: Bitmap, fileName: String): Uri? {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
         }
 
-        // Calculate the starting points for cropping
-        val cropX = (width - newWidth) / 2
-        val cropY = (height - newHeight) / 2
-
-        // Calculate size of the cropped frame
-        val croppedSize = newWidth * newHeight * 3 / 2
-        val croppedData = ByteArray(croppedSize)
-
-        // Iterate over the height of the crop area
-        for (y in 0 until newHeight) {
-            // Crop Y plane
-            val srcYPos = (cropY + y) * width + cropX
-            val dstYPos = y * newWidth
-            System.arraycopy(data, srcYPos, croppedData, dstYPos, newWidth)
-
-            // Crop UV plane (only process every second row for UV)
-            if (y % 2 == 0) {
-                val srcUVPos = width * height + ((cropY / 2) + (y / 2)) * width + cropX
-                val dstUVPos = newWidth * newHeight + (y / 2) * newWidth
-                System.arraycopy(data, srcUVPos, croppedData, dstUVPos, newWidth)
+        val uri: Uri? = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            var outputStream: OutputStream? = null
+            try {
+                outputStream = context.contentResolver.openOutputStream(uri)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream!!)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                outputStream?.close()
             }
         }
+        return uri
+    }
 
-        return CroppedNV21(croppedData, newWidth, newHeight)
+    fun saveVideoToGallery(context: Context, videoFile: File, fileName: String): Uri? {
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
+        }
+
+        val uri: Uri? = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+        if (uri != null) {
+            var outputStream: OutputStream? = null
+            var inputStream: FileInputStream? = null
+            try {
+                outputStream = context.contentResolver.openOutputStream(uri)
+                inputStream = FileInputStream(videoFile)
+
+                val buffer = ByteArray(1024)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream?.write(buffer, 0, bytesRead)
+                }
+            } catch (e: Exception) {
+                XLogger.d("录制的视频 error:${e.message}")
+                e.printStackTrace()
+            } finally {
+                inputStream?.close()
+                outputStream?.close()
+            }
+        }
+        return uri
     }
 
     var lastPrintTime = System.currentTimeMillis()

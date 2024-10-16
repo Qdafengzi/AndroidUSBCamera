@@ -39,9 +39,20 @@ zoom 和sharpness不管用
 
 
 ### v1和v2的区别
+    sharpness
     v1不支持zoom 
     v2 支持zoom
+
+第三方库 lib1
+    可以设置分辨率  但是callbackFrame 分辨率没改变
+
+
     
+
+[第三方库lib3]()
+    USB 连接有问题
+    不能设置预览的画面分辨率
+
 
 
 

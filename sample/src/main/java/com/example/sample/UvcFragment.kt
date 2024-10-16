@@ -282,8 +282,8 @@ open class UvcCameraFragment : CameraFragment() {
          *  720 * 576
          */
         val request = CameraRequest.Builder()
-            .setPreviewWidth(3840)
-            .setPreviewHeight(2160)
+            .setPreviewWidth(1920)
+            .setPreviewHeight(1080)
             .setRenderMode(CameraRequest.RenderMode.OPENGL)
             .setDefaultRotateType(RotateType.ANGLE_0)
             .setAudioSource(CameraRequest.AudioSource.SOURCE_AUTO)
@@ -357,24 +357,29 @@ open class UvcCameraFragment : CameraFragment() {
                     HideFilterView()
                 }
 
-                TextButton(onClick = {
-//                    val size = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
+//                TextButton(onClick = {
 //
-//                    if (mCameraHelper != null && mCameraHelper!!.isCameraOpened) {
-//                        mCameraHelper!!.stopPreview()
-//                        mCameraHelper!!.previewSize = size
-//                        mCameraHelper!!.startPreview()
-//                        // Update the preview size
-////                        mPreviewWidth = size.width
-////                        mPreviewHeight = size.height
+////                    (getCurrentCamera() as? CameraUVC)?.s
+////                    (getCurrentCamera() as? CameraUVC)?.setRenderSize()
 //
-//                        // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
-//                        mBinding.surfaceView.setAspectRatio(size.width,size.height)
-//                    }
-
-                }) {
-                    Text("修改分辨率")
-                }
+//
+////                    val size = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
+////
+////                    if (mCameraHelper != null && mCameraHelper!!.isCameraOpened) {
+////                        mCameraHelper!!.stopPreview()
+////                        mCameraHelper!!.previewSize = size
+////                        mCameraHelper!!.startPreview()
+////                        // Update the preview size
+//////                        mPreviewWidth = size.width
+//////                        mPreviewHeight = size.height
+////
+////                        // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
+////                        mBinding.surfaceView.setAspectRatio(size.width,size.height)
+////                    }
+//
+//                }) {
+//                    Text("修改分辨率")
+//                }
                 AspectRatioView()
                 SliderContent()
             }
@@ -486,7 +491,7 @@ open class UvcCameraFragment : CameraFragment() {
 
         SliderView(
             name = "Zoom",
-            range = 1f..100f,
+            range = 1f..60f,
             sliderValue = zoomSliderValue,
             onValueChange = { progress ->
                 zoomSliderValue.floatValue = progress
@@ -542,6 +547,8 @@ open class UvcCameraFragment : CameraFragment() {
                 //调成手动模式
                 XLogger.d("ae min:${cameraUIState.exposureMin} max${cameraUIState.exposureMax}")
                 (getCurrentCamera() as? CameraUVC)?.setExposure(progress.toInt())
+                (getCurrentCamera() as? CameraUVC)?.setExposureModel(ExposureModel.MANUAL_MODEL.value)
+
             }
         )
     }
@@ -856,7 +863,6 @@ open class UvcCameraFragment : CameraFragment() {
                 mGpuImageLevelsFilter.setMin(0f, 1f, 1f)
                 mGPUImageWhiteBalanceFilter.setTint(50f)
                 mGPUImageWhiteBalanceFilter.setTemperature(5000f)
-//                }
             }
         }) {
             Text("Reset")
@@ -1166,6 +1172,7 @@ open class UvcCameraFragment : CameraFragment() {
 
                     addPreviewDataCallBack(object : IPreviewDataCallBack {
                         override fun onPreviewData(data: ByteArray?, width: Int, height: Int, format: IPreviewDataCallBack.DataFormat) {
+                            XLogger.d("数据:${width}*${height}")
                             //YUV420 转bitmap
 //                            data?.let {
 //                                //速度快一些 但不清晰

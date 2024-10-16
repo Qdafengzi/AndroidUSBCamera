@@ -16,7 +16,6 @@
 
 package com.camera.demo.encoder;
 
-import android.annotation.TargetApi;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.opengl.EGL14;
@@ -36,7 +35,6 @@ import java.nio.ByteOrder;
  * <p>
  * There can be multiple surfaces associated with a single context.
  */
-@TargetApi(18)
 public class EglSurfaceBase {
     protected static final String TAG = "EglSurfaceBase";
 
