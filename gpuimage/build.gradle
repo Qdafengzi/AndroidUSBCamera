@@ -58,7 +58,7 @@ ext {
 dependencies {
 
     implementation project(path: ':core')
-    implementation project(':libnative')
+//    implementation project(':libnative')
 
 }
 
