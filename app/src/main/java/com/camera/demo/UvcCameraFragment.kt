@@ -6,8 +6,6 @@ import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.YuvImage
 import android.hardware.usb.UsbDevice
-import android.hardware.usb.UsbDeviceConnection
-import android.hardware.usb.UsbManager
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaScannerConnection
@@ -55,7 +53,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
@@ -63,7 +60,9 @@ import com.camera.demo.databinding.FragmentDemo02Binding
 import com.camera.utils.XLogger
 import com.herohan.uvcapp.CameraHelper
 import com.herohan.uvcapp.ICameraHelper
+import com.serenegiant.usb.Size
 import com.serenegiant.usb.UVCCamera
+import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageContrastFilter
@@ -87,7 +86,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.text.DecimalFormat
-import kotlin.text.Typography.cent
 
 
 data class UvcCameraUIState(
@@ -179,8 +177,8 @@ open class UvcCameraFragment : Fragment() {
     var mRenderWidth = 1920
     var mRenderHeight = 1920
 
-    val DEFAULT_WIDTH: Int = 3840
-     val DEFAULT_HEIGHT: Int = 2880
+    val DEFAULT_WIDTH: Int = 640
+    val DEFAULT_HEIGHT: Int = 480
 
 
     var mCurrentAspectWithP = 1
@@ -326,6 +324,7 @@ open class UvcCameraFragment : Fragment() {
                 frame[nv21, 0, nv21.size]
                 //
 //                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
+                logWithInterval("画面的尺寸：${size?.width}*${size?.height}")
                 val bitmap = convertRGBXToBitmap(nv21, size!!.width, size.height)
                 lifecycleScope.launch(Dispatchers.Main) {
                     mBinding.imageView.setImage(bitmap)
@@ -445,6 +444,25 @@ open class UvcCameraFragment : Fragment() {
                     AutoFocus()
                     HideFilterView()
                 }
+
+                TextButton(onClick = {
+                    val size = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
+
+                    if (mCameraHelper != null && mCameraHelper!!.isCameraOpened) {
+                        mCameraHelper!!.stopPreview()
+                        mCameraHelper!!.previewSize = size
+                        mCameraHelper!!.startPreview()
+                        // Update the preview size
+//                        mPreviewWidth = size.width
+//                        mPreviewHeight = size.height
+
+                        // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
+                        mBinding.surfaceView.setAspectRatio(size.width,size.height)
+                    }
+
+                }) {
+                    Text("修改分辨率")
+                }
                 AspectRatioView()
                 SliderContent()
             }
@@ -477,7 +495,8 @@ open class UvcCameraFragment : Fragment() {
                     }
                 },
                 text = {
-                    Text(text = """
+                    Text(
+                        text = """
                         manufacturerName: ${cameraOtherUIState.device?.manufacturerName}
                         deviceId: ${cameraOtherUIState.device?.deviceId}
                         deviceName: ${cameraOtherUIState.device?.deviceName}
