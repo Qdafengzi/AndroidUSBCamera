@@ -39,7 +39,7 @@ public class GPUImageGammaFilter extends GPUImageFilter {
     private float gamma;
 
     public GPUImageGammaFilter() {
-        this(1.2f);
+        this(1.0f);
     }
 
     public GPUImageGammaFilter(final float gamma) {

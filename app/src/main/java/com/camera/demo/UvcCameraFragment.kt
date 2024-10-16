@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
@@ -65,9 +66,15 @@ import com.herohan.uvcapp.ICameraHelper
 import com.serenegiant.usb.UVCCamera
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageContrastFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageExposureFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageGammaFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageHueFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageLevelsFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageSaturationFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageSharpenFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageWhiteBalanceFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -80,6 +87,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
 import java.text.DecimalFormat
+import kotlin.text.Typography.cent
 
 
 data class UvcCameraUIState(
@@ -121,7 +129,7 @@ data class UvcCameraUIState(
 )
 
 data class CameraOtherState(
-    val deviceInfo: String = "",
+    val device: UsbDevice? = null,
     val showDeviceInfoDialog: Boolean = false,
 )
 
@@ -154,9 +162,15 @@ class UvcCameraViewModel : ViewModel() {
         }
     }
 
-    fun showDeviceInfoDialog(deviceInfo: String, show: Boolean) {
+    fun showDeviceDialog(show: Boolean) {
         _cameraOtherUIState.update {
-            it.copy(deviceInfo = deviceInfo, showDeviceInfoDialog = show)
+            it.copy(showDeviceInfoDialog = show)
+        }
+    }
+
+    fun updateDeviceInfo(device: UsbDevice) {
+        _cameraOtherUIState.update {
+            it.copy(device = device)
         }
     }
 }
@@ -190,6 +204,31 @@ open class UvcCameraFragment : Fragment() {
     private val mGpuImageLevelsFilter by lazy {
         GPUImageLevelsFilter()
     }
+
+    private val mGPUImageSharpenFilter by lazy {
+        GPUImageSharpenFilter()
+    }
+
+    private val mGPUImageGammaFilter by lazy {
+        GPUImageGammaFilter()
+    }
+
+    private val mGPUImageSaturationFilter by lazy {
+        GPUImageSaturationFilter()
+    }
+
+    private val mGPUImageExposureFilter by lazy {
+        GPUImageExposureFilter()
+    }
+
+    private val mGPUImageContrastFilter by lazy {
+        GPUImageContrastFilter()
+    }
+
+    private val mGPUImageHueFilter by lazy {
+        GPUImageHueFilter()
+    }
+
 
     private lateinit var mBinding: FragmentDemo02Binding
 
@@ -255,8 +294,7 @@ open class UvcCameraFragment : Fragment() {
 
         override fun onDeviceOpen(device: UsbDevice, isFirstOpen: Boolean) {
             mCameraHelper?.openCamera()
-            //todo:
-            //device.deviceClass
+            mViewModel.updateDeviceInfo(device)
         }
 
         override fun onCameraOpen(device: UsbDevice) {
@@ -265,16 +303,7 @@ open class UvcCameraFragment : Fragment() {
 
             mCameraHelper?.uvcControl?.apply {
                 focusAuto = false
-                XLogger.d(
-                    """
-                        isZoomAbsoluteEnable ${isZoomAbsoluteEnable}
-                        isSharpnessEnable ${isSharpnessEnable}
-                        isSharpnessEnable ${isWhiteBalanceCompoAutoEnable}
-                    """.trimIndent()
-                )
             }
-
-
 
             val size = mCameraHelper?.previewSize
             if (size != null) {
@@ -357,7 +386,7 @@ open class UvcCameraFragment : Fragment() {
         val decimal = DecimalFormat(" #.0' fps'")
         mCustomFPS = CustomFPS()
         mCustomFPS?.addListener { fps ->
-            XLogger.d("FPS:${decimal.format(fps)}")
+            //XLogger.d("FPS:${decimal.format(fps)}")
         }
     }
 
@@ -369,13 +398,21 @@ open class UvcCameraFragment : Fragment() {
     }
 
 
-    fun setFilter() {
+    fun setFilter(haveFilter:Boolean = true) {
         mBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
         val gpuImageFilters = mutableListOf<GPUImageFilter>()
         gpuImageFilters.add(mGpuImageMovieWriter)
-        gpuImageFilters.add(mGpuImageLevelsFilter)
-        gpuImageFilters.add(mGPUImageWhiteBalanceFilter)
-        gpuImageFilters.add(mGPUImageBrightnessFilter)
+        if (haveFilter) {
+            gpuImageFilters.add(mGpuImageLevelsFilter)
+            gpuImageFilters.add(mGPUImageBrightnessFilter)
+            gpuImageFilters.add(mGPUImageWhiteBalanceFilter)
+            gpuImageFilters.add(mGPUImageSharpenFilter)
+            gpuImageFilters.add(mGPUImageGammaFilter)
+            gpuImageFilters.add(mGPUImageSaturationFilter)
+            gpuImageFilters.add(mGPUImageExposureFilter)
+            gpuImageFilters.add(mGPUImageContrastFilter)
+            gpuImageFilters.add(mGPUImageHueFilter)
+        }
 
         mBinding.imageView.filter = GPUImageFilterGroup(gpuImageFilters)
         mBinding.imageView.setDrawVideoListener {
@@ -386,6 +423,7 @@ open class UvcCameraFragment : Fragment() {
         mGpuImageMovieWriter.gpuImageErrorListener =
             GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
 
+        mBinding.imageView.requestRender()
     }
 
     private fun setContent() {
@@ -404,10 +442,24 @@ open class UvcCameraFragment : Fragment() {
                     DeviceInfoView()
                     ResetView()
                     AutoBalanceView()
+                    AutoFocus()
+                    HideFilterView()
                 }
                 AspectRatioView()
                 SliderContent()
             }
+        }
+    }
+
+    @Composable
+    fun HideFilterView() {
+        var haveFilter by remember { mutableStateOf(true) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("NoFilter")
+            Switch(checked = haveFilter, onCheckedChange = {
+                haveFilter = it
+                setFilter(haveFilter)
+            })
         }
     }
 
@@ -419,16 +471,29 @@ open class UvcCameraFragment : Fragment() {
                 onDismissRequest = {},
                 confirmButton = {
                     TextButton(onClick = {
-                        mViewModel.showDeviceInfoDialog(deviceInfo = "", false)
+                        mViewModel.showDeviceDialog(false)
                     }) {
                         Text(text = "OK")
                     }
                 },
                 text = {
-                    Text(cameraOtherUIState.deviceInfo)
+                    Text(text = """
+                        manufacturerName: ${cameraOtherUIState.device?.manufacturerName}
+                        deviceId: ${cameraOtherUIState.device?.deviceId}
+                        deviceName: ${cameraOtherUIState.device?.deviceName}
+                        deviceProtocol: ${cameraOtherUIState.device?.deviceProtocol}
+                        deviceClass: ${cameraOtherUIState.device?.deviceClass}
+                        deviceSubclass: ${cameraOtherUIState.device?.deviceSubclass}
+                        productId: ${cameraOtherUIState.device?.productId}
+                        productName: ${cameraOtherUIState.device?.productName}
+                        serialNumber: ${cameraOtherUIState.device?.serialNumber}
+                        vendorId: ${cameraOtherUIState.device?.vendorId}
+                        version: ${cameraOtherUIState.device?.version}
+                    """.trimIndent(),
+                    )
                 },
                 title = {
-                    Text("Device Info")
+                    Text(text = "Device Info", fontWeight = FontWeight.Bold)
                 },
             )
         }
@@ -490,15 +555,18 @@ open class UvcCameraFragment : Fragment() {
 
         SliderView(
             name = "Zoom",
-            range = 1f..100f,
+            range = 1f..60f,
             sliderValue = zoomSliderValue,
             onValueChange = { progress ->
                 zoomSliderValue.floatValue = progress
-                mCameraHelper?.uvcControl?.zoomAbsolutePercent = progress.toInt()
-                mCameraHelper?.uvcControl?.zoomAbsolute = progress.toInt()
-//                mCameraHelper?.uvcControl?.zoomRelative = progress.toInt()
-                XLogger.d("缩放是否可以用:${mCameraHelper?.uvcControl?.isZoomAbsoluteEnable}")
-                XLogger.d("缩放是否可以用:${mCameraHelper?.uvcControl?.isZoomRelativeEnable}")
+
+                mCameraHelper?.uvcControl?.apply {
+                    updateZoomAbsoluteLimit()
+                    zoomRelative = progress.toInt()
+                    XLogger.d("zoom isZoomAbsoluteEnable:${isZoomAbsoluteEnable}")
+                    XLogger.d("zoom isZoomRelativeEnable:${isZoomRelativeEnable}")
+                    zoomAbsolutePercent = progress.toInt()
+                }
             }
         )
         SliderView(
@@ -689,12 +757,78 @@ open class UvcCameraFragment : Fragment() {
 
             val brightness2SliderValue = remember { mutableFloatStateOf(0f) }
             SliderView(
-                name = "Brightness by filter",
+                name = "Brightness",
                 range = -1f..1f,
                 sliderValue = brightness2SliderValue,
                 onValueChange = { progress ->
                     brightness2SliderValue.floatValue = progress
                     mGPUImageBrightnessFilter.setBrightness(progress)
+                }
+            )
+
+            val sharpnessValue = remember { mutableFloatStateOf(0f) }
+            SliderView(
+                name = "Sharpness",
+                range = -4f..4f,
+                sliderValue = sharpnessValue,
+                onValueChange = { progress ->
+                    sharpnessValue.floatValue = progress
+                    mGPUImageSharpenFilter.setSharpness(progress)
+                }
+            )
+
+            val exposureValue = remember { mutableFloatStateOf(0f) }
+            SliderView(
+                name = "Exposure",
+                range = -10f..10f,
+                sliderValue = exposureValue,
+                onValueChange = { progress ->
+                    exposureValue.floatValue = progress
+                    mGPUImageExposureFilter.setExposure(progress)
+                }
+            )
+
+
+            val gammaValue = remember { mutableFloatStateOf(1f) }
+            SliderView(
+                name = "Gamma",
+                range = 0f..3f,
+                sliderValue = gammaValue,
+                onValueChange = { progress ->
+                    gammaValue.floatValue = progress
+                    mGPUImageGammaFilter.setGamma(progress)
+                }
+            )
+
+            val saturationValue = remember { mutableFloatStateOf(1f) }
+            SliderView(
+                name = "Saturation",
+                range = 0f..2f,
+                sliderValue = saturationValue,
+                onValueChange = { progress ->
+                    saturationValue.floatValue = progress
+                    mGPUImageSaturationFilter.setSaturation(progress)
+                }
+            )
+            val contrastValue = remember { mutableFloatStateOf(1f) }
+            SliderView(
+                name = "Contrast",
+                range = 0f..4f,
+                sliderValue = contrastValue,
+                onValueChange = { progress ->
+                    contrastValue.floatValue = progress
+                    mGPUImageContrastFilter.setContrast(progress)
+                }
+            )
+
+            val hueValue = remember { mutableFloatStateOf(0f) }
+            SliderView(
+                name = "Hue",
+                range = 0f..360f,
+                sliderValue = hueValue,
+                onValueChange = { progress ->
+                    hueValue.floatValue = progress
+                    mGPUImageHueFilter.setHue(progress)
                 }
             )
         }
@@ -742,11 +876,26 @@ open class UvcCameraFragment : Fragment() {
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
         var autoWhiteBalance by remember { mutableStateOf(cameraUIState.autoWhiteBalance) }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("AutoWhiteBalance")
+            Text("WB")
             Switch(checked = autoWhiteBalance, onCheckedChange = {
                 autoWhiteBalance = it
                 mCameraHelper?.uvcControl?.apply {
                     whiteBalanceAuto = it
+                }
+            })
+        }
+    }
+
+    @Composable
+    fun AutoFocus() {
+        val cameraUIState = mViewModel.cameraUIState.collectAsState().value
+        var autoFocus by remember { mutableStateOf(cameraUIState.autoFocus) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("AFocus")
+            Switch(checked = autoFocus, onCheckedChange = {
+                autoFocus = it
+                mCameraHelper?.uvcControl?.apply {
+                    focusAuto = it
                 }
             })
         }
@@ -758,18 +907,35 @@ open class UvcCameraFragment : Fragment() {
         Button(onClick = {
             scope.launch {
                 mCameraHelper?.uvcControl?.apply {
-                   resetGamma()
-                    resetGamma()
-                    resetHue()
-                    resetContrast()
-                    resetSharpness()
-                    resetSaturation()
-                    resetBrightness()
-                    resetZoomAbsolute()
-                    resetGain()
-                    resetFocusAuto()
                     resetExposureTimeAbsolute()
                     resetAutoExposureMode()
+                    resetPowerlineFrequency()
+                    resetGain()
+                    resetBrightness()
+                    resetContrast()
+                    resetSaturation()
+                    resetSharpness()
+                    resetWhiteBalanceAuto()
+                    resetWhiteBalance()
+                    resetBacklightComp()
+                    resetZoomAbsolute()
+                    resetPanAbsolute()
+                    resetFocusAuto()
+                    resetFocusAbsolute()
+                    resetGamma()
+                    resetHue()
+
+
+                    mGPUImageGammaFilter.setGamma(1f)
+                    mGPUImageHueFilter.setHue(0f)
+                    mGPUImageContrastFilter.setContrast(1.0f)
+                    mGPUImageSharpenFilter.setSharpness(0f)
+                    mGPUImageExposureFilter.setExposure(0f)
+                    mGPUImageSaturationFilter.setSaturation(1f)
+                    mGPUImageBrightnessFilter.setBrightness(0f)
+                    mGpuImageLevelsFilter.setMin(0f,1f,1f)
+                    mGPUImageWhiteBalanceFilter.setTint(50f)
+                    mGPUImageWhiteBalanceFilter.setTemperature(5000f)
                 }
             }
         }) {
@@ -782,28 +948,7 @@ open class UvcCameraFragment : Fragment() {
         val scope = rememberCoroutineScope()
         IconButton(onClick = {
             scope.launch {
-
-//                mCameraHelper?.deviceList[0]?.deviceId
-
-
-//                val camera = (getCurrentCamera() as? CameraUVC)
-//                camera?.let {
-//                    val usbManager = requireContext().getSystemService(Context.USB_SERVICE) as UsbManager
-//                    val usbDeviceConnection: UsbDeviceConnection = usbManager.openDevice(camera.device)
-//                    val info =
-//                            "\nManufacturerName:    ${camera.device.manufacturerName}" +
-//                            "\nDeviceId:    ${camera.device.deviceId}" +
-//                            "\nDeviceName:  ${camera.device.deviceName}" +
-//                            "\nDeviceClass: ${camera.device.deviceClass}" +
-//                            "\nDeviceSubclass:  ${camera.device.deviceSubclass}" +
-//                            "\nDeviceProtocol:  ${camera.device.deviceProtocol}" +
-//                            "\nSerialNumber:    ${camera.device.serialNumber}" +
-//                            "\nProductId:   ${camera.device.productId}" +
-//                            "\nProductName: ${camera.device.productName}" +
-//                            "\nVersion: ${camera.device.version}" +
-//                            "\nVendorId:    ${camera.device.vendorId}"
-//                    mViewModel.showDeviceInfoDialog(deviceInfo = info, show = true)
-//                }
+                mViewModel.showDeviceDialog(show = true)
             }
         }) {
             Icon(imageVector = Icons.Default.Info, contentDescription = "")

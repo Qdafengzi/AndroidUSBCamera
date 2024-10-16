@@ -38,6 +38,12 @@
 zoom 和sharpness不管用
 
 
+### v1和v2的区别
+    v1不支持zoom 
+    v2 支持zoom
+    
+
+
 
 
 7.问题解决

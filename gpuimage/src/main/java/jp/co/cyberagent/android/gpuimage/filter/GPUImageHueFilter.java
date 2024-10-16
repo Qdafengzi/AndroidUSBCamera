@@ -18,6 +18,9 @@ package jp.co.cyberagent.android.gpuimage.filter;
 
 import android.opengl.GLES30;
 
+/**
+ * 0-360
+ */
 public class GPUImageHueFilter extends GPUImageFilter {
     public static final String HUE_FRAGMENT_SHADER = "" +
             "precision highp float;\n" +
@@ -68,7 +71,7 @@ public class GPUImageHueFilter extends GPUImageFilter {
     private int hueLocation;
 
     public GPUImageHueFilter() {
-        this(90.0f);
+        this(0f);
     }
 
     public GPUImageHueFilter(final float hue) {
