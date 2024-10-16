@@ -263,7 +263,8 @@ static jint nativeSetPreviewDisplay(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
-static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,ID_TYPE id_camera, jobject jIFrameCallback, jint pixel_format) {
+static jint nativeSetFrameCallback(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera, jobject jIFrameCallback, jint pixel_format) {
 
 	jint result = JNI_ERR;
 	ENTER();
@@ -290,7 +291,6 @@ static jint nativeSetCaptureDisplay(JNIEnv *env, jobject thiz,
 
 //======================================================================
 // カメラコントロールでサポートしている機能を取得する
-//获取相机控制支持的功能
 static jlong nativeGetCtrlSupports(JNIEnv *env, jobject thiz,
 	ID_TYPE id_camera) {
 
@@ -376,7 +376,6 @@ static jint nativeUpdateExposureModeLimit(JNIEnv *env, jobject thiz,
 	if (LIKELY(camera)) {
 		int min, max, def;
 		result = camera->updateExposureModeLimit(min, max, def);
-        LOGI("get exposure model min:%d max:%d def:%d result:%d", min, max, def, result);
 		if (!result) {
 			// Java側へ書き込む
 			setField_int(env, thiz, "mExposureModeMin", min);
@@ -399,7 +398,8 @@ static jint nativeSetExposureMode(JNIEnv *env, jobject thiz,
 	RETURN(result, jint);
 }
 
-static jint nativeGetExposureMode(JNIEnv *env, jobject thiz,ID_TYPE id_camera) {
+static jint nativeGetExposureMode(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
 
 	jint result = JNI_ERR;
 	ENTER();
@@ -1688,23 +1688,20 @@ static jint nativeGetPowerlineFrequency(JNIEnv *env, jobject thiz,
 
 //======================================================================
 // Java mnethod correspond to this function should not be a static mathod
-static jint nativeUpdateZoomLimit(JNIEnv *env, jobject thiz,ID_TYPE id_camera) {
+static jint nativeUpdateZoomLimit(JNIEnv *env, jobject thiz,
+	ID_TYPE id_camera) {
 	jint result = JNI_ERR;
 	ENTER();
-	auto *camera = reinterpret_cast<UVCCamera *>(id_camera);
+	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	if (LIKELY(camera)) {
 		int min, max, def;
 		result = camera->updateZoomLimit(min, max, def);
-        LOGI("zoom result:%d",result );
 		if (!result) {
 			// Java側へ書き込む
 			setField_int(env, thiz, "mZoomMin", min);
 			setField_int(env, thiz, "mZoomMax", max);
 			setField_int(env, thiz, "mZoomDef", def);
-            LOGI("set zoom value to java, def:%d, min:%d max:%d", def, min, max);
-        } else {
-            LOGI("get zoom fail def:%d, min:%d max:%d", def, min, max);
-        }
+		}
 	}
 	RETURN(result, jint);
 }
@@ -1718,7 +1715,6 @@ static jint nativeSetZoom(JNIEnv *env, jobject thiz,
 	if (LIKELY(camera)) {
 		result = camera->setZoom(zoom);
 	}
-    LOGI("set zoom %d",result);
 	RETURN(result, jint);
 }
 
@@ -1730,7 +1726,6 @@ static jint nativeGetZoom(JNIEnv *env, jobject thiz,
 	UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
 	if (LIKELY(camera)) {
 		result = camera->getZoom();
-        LOGI("get zoom %d",result);
 	}
 	RETURN(result, jint);
 }

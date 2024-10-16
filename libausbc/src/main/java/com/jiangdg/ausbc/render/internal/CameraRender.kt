@@ -17,7 +17,7 @@ package com.jiangdg.ausbc.render.internal
 
 import android.content.Context
 import android.opengl.GLES11Ext
-import android.opengl.GLES30
+import android.opengl.GLES20
 import android.opengl.Matrix
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.env.RotateType
@@ -40,13 +40,13 @@ class CameraRender(context: Context) : AbstractFboRender(context) {
         mOESTextureId = createOESTexture()
         setMVPMatrix(0)
         Matrix.setIdentityM(mStMatrix, 0)
-        mStMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uStMatrix")
-        mMVPMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uMVPMatrix")
+        mStMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uStMatrix")
+        mMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
     }
 
     override fun beforeDraw() {
-        GLES30.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0)
-        GLES30.glUniformMatrix4fv(mStMatrixHandle, 1, false, mStMatrix, 0)
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0)
+        GLES20.glUniformMatrix4fv(mStMatrixHandle, 1, false, mStMatrix, 0)
     }
 
     override fun getBindTextureType(): Int {

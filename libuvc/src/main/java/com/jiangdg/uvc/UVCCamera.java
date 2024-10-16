@@ -43,7 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UVCCamera {
-	public static boolean DEBUG = true;	// TODO set false when releasing
+	public static boolean DEBUG = false;	// TODO set false when releasing
 	private static final String TAG = UVCCamera.class.getSimpleName();
 	private static final String DEFAULT_USBFS = "/dev/bus/usb";
 	public static final int FRAME_FORMAT_YUYV = 0;
@@ -112,12 +112,6 @@ public class UVCCamera {
 	public static final int STATUS_ATTRIBUTE_INFO_CHANGE = 0x01;
 	public static final int STATUS_ATTRIBUTE_FAILURE_CHANGE = 0x02;
 	public static final int STATUS_ATTRIBUTE_UNKNOWN = 0xff;
-
-	public static final int UVC_AUTO_EXPOSURE_MODE_MANUAL = 1; // manual exposure time, manual iris
-	public static final int UVC_AUTO_EXPOSURE_MODE_AUTO = 2; // auto exposure time, auto iris
-	public static final int UVC_AUTO_EXPOSURE_MODE_SHUTTER_PRIORITY = 4; // manual exposure time, auto iris
-	public static final int UVC_AUTO_EXPOSURE_MODE_APERTURE_PRIORITY = 8; // auto exposure time, manual iris
-
 
 	private static boolean isLoaded;
 	static {
@@ -375,24 +369,23 @@ public class UVCCamera {
 	}
 
 	public List<Size> getSupportedSize(final int type, final String supportedSize) {
-		 List<Size> result = new ArrayList<>();
-		if (!TextUtils.isEmpty(supportedSize)){
-			try {
-				JSONObject json = new JSONObject(supportedSize);
-				JSONArray formats = json.getJSONArray("formats");
-				int format_nums = formats.length();
-				for (int i = 0; i < format_nums; i++) {
-					final JSONObject format = formats.getJSONObject(i);
-					if(format.has("type") && format.has("size")) {
-						final int format_type = format.getInt("type");
-						if ((format_type == type) || (type == -1)) {
-							addSize(format, format_type, 0, result);
-						}
+		final List<Size> result = new ArrayList<Size>();
+		if (!TextUtils.isEmpty(supportedSize))
+		try {
+			final JSONObject json = new JSONObject(supportedSize);
+			final JSONArray formats = json.getJSONArray("formats");
+			final int format_nums = formats.length();
+			for (int i = 0; i < format_nums; i++) {
+				final JSONObject format = formats.getJSONObject(i);
+				if(format.has("type") && format.has("size")) {
+					final int format_type = format.getInt("type");
+					if ((format_type == type) || (type == -1)) {
+						addSize(format, format_type, 0, result);
 					}
 				}
-			} catch (JSONException e) {
-				XLogWrapper.d(TAG,"get support error:"+e.getMessage());
 			}
+		} catch (final JSONException e) {
+			e.printStackTrace();
 		}
 		return result;
 	}
@@ -617,27 +610,23 @@ public class UVCCamera {
 	public synchronized int getExposureModel(final int model) {
 		int result = 0;
 		if (mNativePtr != 0) {
-			int i = nativeUpdateExposureModeLimit(mNativePtr);
-			XLogWrapper.d(TAG,"get ae model------>:"+i);
+			nativeUpdateExposureModeLimit(mNativePtr);
 			final float range = Math.abs(mExposureModeMax - mExposureModeMin);
 			if (range > 0) {
 				result = (int) ((model - mExposureModeMin) * 100.f / range);
-				XLogWrapper.d(TAG,"曝光模式 :"+result);
 			}
 		}
 		return result;
 	}
 
 	public synchronized int getExposureModel() {
-		nativeUpdateExposureModeLimit(mNativePtr);
-		return nativeGetExposureMode(mNativePtr);
+		return getExposureModel(nativeGetExposureMode(mNativePtr));
 	}
 
 
 	public synchronized void resetExposureModel() {
 		if (mNativePtr != 0) {
-			//自动曝光模式
-			nativeSetExposureMode(mNativePtr, 2);
+			nativeSetExposureMode(mNativePtr, mExposureModeDef);
 		}
 	}
 
@@ -650,14 +639,13 @@ public class UVCCamera {
 	}
 
 
-//========================================================================================================================
+
 	/**
 	 * 曝光
 	 * @param exposure 曝光值
 	 */
 	public synchronized void setExposure(int exposure){
 		if (mNativePtr != 0) {
-			nativeSetExposure(mNativePtr, exposure);
 			final float range = Math.abs(mExposureMax - mExposureMin);
 			if (range > 0)
 				nativeSetExposure(mNativePtr, (int)(exposure / 100.f * range) + mExposureMin);
@@ -1139,8 +1127,8 @@ public class UVCCamera {
 	    	    	nativeUpdateZoomLimit(mNativePtr);
 	    	    	nativeUpdateWhiteBlanceLimit(mNativePtr);
 	    	    	nativeUpdateFocusLimit(mNativePtr);
-					nativeUpdateExposureModeLimit(mNativePtr);
 					nativeUpdateExposureLimit(mNativePtr);
+					nativeUpdateExposureModeLimit(mNativePtr);
 
     	    	}
     	    	if (DEBUG) {

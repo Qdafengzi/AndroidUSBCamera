@@ -17,7 +17,7 @@ package com.jiangdg.ausbc.render.internal
 
 import android.content.Context
 import android.opengl.GLES11Ext
-import android.opengl.GLES30
+import android.opengl.GLES20
 import android.util.Log
 import com.jiangdg.ausbc.utils.Logger
 import com.jiangdg.ausbc.utils.MediaUtils
@@ -55,41 +55,41 @@ abstract class AbstractRender(context: Context) {
     open fun setSize(width: Int, height: Int) {
         this.mWidth = width
         this.mHeight = height
-        GLES30.glViewport(0, 0, mWidth, mHeight)
+        GLES20.glViewport(0, 0, mWidth, mHeight)
     }
 
     open fun drawFrame(textureId: Int): Int {
-        GLES30.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
-        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT or GLES30.GL_COLOR_BUFFER_BIT)
-        GLES30.glViewport(0, 0, mWidth, mHeight)
+        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
+        GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT or GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glViewport(0, 0, mWidth, mHeight)
         // 1. 激活程序，绑定纹理
-        GLES30.glUseProgram(mProgram)
+        GLES20.glUseProgram(mProgram)
 
         // 2. 链接顶点属性
         mTriangleVertices.position(TRIANGLE_VERTICES_DATA_POS_OFFSET)
-        GLES30.glVertexAttribPointer(mPositionLocation, 3, GLES30.GL_FLOAT, false,
+        GLES20.glVertexAttribPointer(mPositionLocation, 3, GLES20.GL_FLOAT, false,
             TRIANGLE_VERTICES_DATA_STRIDE_BYTES, mTriangleVertices)
-        GLES30.glEnableVertexAttribArray(mPositionLocation)
+        GLES20.glEnableVertexAttribArray(mPositionLocation)
         mTriangleVertices.position(TRIANGLE_VERTICES_DATA_UV_OFFSET)
-        GLES30.glVertexAttribPointer(mTextureCoordLocation, 2, GLES30.GL_FLOAT, false,
+        GLES20.glVertexAttribPointer(mTextureCoordLocation, 2, GLES20.GL_FLOAT, false,
             TRIANGLE_VERTICES_DATA_STRIDE_BYTES, mTriangleVertices)
-        GLES30.glEnableVertexAttribArray(mTextureCoordLocation)
+        GLES20.glEnableVertexAttribArray(mTextureCoordLocation)
 
         beforeDraw()
 
         // 3. 绘制
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
-        GLES30.glBindTexture(getBindTextureType(), textureId)
-        GLES30.glUniform1i(mTextureSampler, 0)
-        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
-        GLES30.glBindTexture(getBindTextureType(), 0)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(getBindTextureType(), textureId)
+        GLES20.glUniform1i(mTextureSampler, 0)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        GLES20.glBindTexture(getBindTextureType(), 0)
         return textureId
     }
 
     protected open fun beforeDraw() {}
     protected open fun init() {}
     protected open fun clear() {}
-    protected open fun getBindTextureType() = GLES30.GL_TEXTURE_2D
+    protected open fun getBindTextureType() = GLES20.GL_TEXTURE_2D
     protected abstract fun getVertexSourceId(): Int
     protected abstract fun getFragmentSourceId(): Int
 
@@ -98,14 +98,14 @@ abstract class AbstractRender(context: Context) {
         val fragmentShaderSource = MediaUtils.readRawTextFile(mContext!!, getFragmentSourceId())
         mProgram = createProgram(vertexShaderSource, fragmentShaderSource)
         if (mProgram == 0) {
-            Logger.e(TAG, "create program failed, err = ${GLES30.glGetError()}")
+            Logger.e(TAG, "create program failed, err = ${GLES20.glGetError()}")
             return
         }
-        mPositionLocation = GLES30.glGetAttribLocation(mProgram, "aPosition")
-        mTextureCoordLocation = GLES30.glGetAttribLocation(mProgram, "aTextureCoordinate")
-        mTextureSampler = GLES30.glGetUniformLocation(mProgram, "uTextureSampler")
+        mPositionLocation = GLES20.glGetAttribLocation(mProgram, "aPosition")
+        mTextureCoordLocation = GLES20.glGetAttribLocation(mProgram, "aTextureCoordinate")
+        mTextureSampler = GLES20.glGetUniformLocation(mProgram, "uTextureSampler")
         if (isGLESStatusError()) {
-            Logger.e(TAG, "create external texture failed, err = ${GLES30.glGetError()}")
+            Logger.e(TAG, "create external texture failed, err = ${GLES20.glGetError()}")
             return
         }
         init()
@@ -114,13 +114,13 @@ abstract class AbstractRender(context: Context) {
 
     fun releaseGLES() {
         if (mVertexShader != 0) {
-            GLES30.glDeleteShader(mVertexShader)
+            GLES20.glDeleteShader(mVertexShader)
         }
         if (mFragmentShader != 0) {
-            GLES30.glDeleteShader(mFragmentShader)
+            GLES20.glDeleteShader(mFragmentShader)
         }
         if (mProgram != 0) {
-            GLES30.glDeleteProgram(mProgram)
+            GLES20.glDeleteProgram(mProgram)
         }
         clear()
         Logger.i(TAG, "release surface texture render success!")
@@ -131,14 +131,14 @@ abstract class AbstractRender(context: Context) {
     fun getRenderHeight() = mHeight
 
     private fun loadShader(shaderType: Int, source: String): Int {
-        val shader = GLES30.glCreateShader(shaderType)
-        GLES30.glShaderSource(shader, source)
-        GLES30.glCompileShader(shader)
+        val shader = GLES20.glCreateShader(shaderType)
+        GLES20.glShaderSource(shader, source)
+        GLES20.glCompileShader(shader)
         val compiled = IntArray(1)
-        GLES30.glGetShaderiv(shader, GLES30.GL_COMPILE_STATUS, compiled, 0)
+        GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
         if (compiled[0] == 0) {
-            Log.e(TAG, "Could not compile shader, info = ${GLES30.glGetShaderInfoLog(shader)}, T = ${Thread.currentThread().name}")
-            GLES30.glDeleteShader(shader)
+            Log.e(TAG, "Could not compile shader, info = ${GLES20.glGetShaderInfoLog(shader)}, T = ${Thread.currentThread().name}")
+            GLES20.glDeleteShader(shader)
             return 0
         }
         return shader
@@ -146,51 +146,51 @@ abstract class AbstractRender(context: Context) {
 
     private fun createProgram(vertexSource: String, fragmentSource: String): Int {
         // 创建顶点、片段着色器
-        mVertexShader = loadShader(GLES30.GL_VERTEX_SHADER, vertexSource)
+        mVertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource)
         if (mVertexShader == 0) {
-            Logger.i(TAG, "vertexSource err = ${GLES30.glGetError()}: \n $vertexSource")
+            Logger.i(TAG, "vertexSource err = ${GLES20.glGetError()}: \n $vertexSource")
             return 0
         }
-        mFragmentShader = loadShader(GLES30.GL_FRAGMENT_SHADER, fragmentSource)
+        mFragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource)
         if (mFragmentShader == 0) {
-            Logger.i(TAG, "fragmentSource err = ${GLES30.glGetError()}: \n $fragmentSource")
+            Logger.i(TAG, "fragmentSource err = ${GLES20.glGetError()}: \n $fragmentSource")
             return 0
         }
         // 创建链接程序，并将着色器依附到程序
-        val program = GLES30.glCreateProgram()
-        GLES30.glAttachShader(program, mVertexShader)
-        GLES30.glAttachShader(program, mFragmentShader)
-        GLES30.glLinkProgram(program)
+        val program = GLES20.glCreateProgram()
+        GLES20.glAttachShader(program, mVertexShader)
+        GLES20.glAttachShader(program, mFragmentShader)
+        GLES20.glLinkProgram(program)
         val linkStatus = IntArray(1)
-        GLES30.glGetProgramiv(program, GLES30.GL_LINK_STATUS, linkStatus, 0)
-        if (linkStatus[0] != GLES30.GL_TRUE) {
+        GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0)
+        if (linkStatus[0] != GLES20.GL_TRUE) {
             Logger.e(TAG, "create program failed.")
-            GLES30.glDeleteProgram(program)
+            GLES20.glDeleteProgram(program)
             return 0
         }
         return program
     }
 
-    private fun isGLESStatusError() = GLES30.glGetError() != GLES30.GL_NO_ERROR
+    private fun isGLESStatusError() = GLES20.glGetError() != GLES20.GL_NO_ERROR
 
     protected fun createTexture(textures: IntArray) {
-        GLES30.glGenTextures(1, textures, 0)
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textures[0])
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_NEAREST)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+        GLES20.glGenTextures(1, textures, 0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0])
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         Logger.i(TAG, "create texture, id = ${textures[0]}")
     }
 
     fun createOESTexture(): Int {
         val textures = IntArray(1)
-        GLES30.glGenTextures(1, textures, 0)
-        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0])
-        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_NEAREST)
-        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
-        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
-        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+        GLES20.glGenTextures(1, textures, 0)
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0])
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
         Logger.i(TAG, "create external texture, id = ${textures[0]}")
         return textures[0]
     }

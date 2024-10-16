@@ -40,7 +40,6 @@
 #include "utilbase.h"
 #include "UVCPreview.h"
 #include "libuvc_internal.h"
-#include "libyuv.h"
 
 #define	LOCAL_DEBUG 0
 #define MAX_FRAME 4
@@ -547,7 +546,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 		LOGI("Streaming...");
 #endif
 		if (frameMode) {
-            // MJPEG mode
+			// MJPEG mode
 			for ( ; LIKELY(isRunning()) ; ) {
 				frame_mjpeg = waitPreviewFrame();
 				if (LIKELY(frame_mjpeg)) {
@@ -555,16 +554,13 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 					result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
 					recycle_frame(frame_mjpeg);
 					if (LIKELY(!result)) {
-						//frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
-//                        LOGE("帧数据");
-                        //不加上面的转换 是YUYV格式的 加了就是RGBA格式的数据
+						frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx, 4);
 						addCaptureFrame(frame);
 					} else {
 						recycle_frame(frame);
 					}
 				}
 			}
-
 		} else {
 			// yuvyv mode
 			for ( ; LIKELY(isRunning()) ; ) {

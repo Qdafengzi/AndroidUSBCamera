@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import android.util.Log
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
@@ -34,9 +34,9 @@ class EffectSharpen(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        sharpnessLocation = GLES30.glGetUniformLocation(mProgram, "sharpness")
-        imageWidthFactorLocation = GLES30.glGetUniformLocation(mProgram, "imageWidthFactor")
-        imageHeightFactorLocation = GLES30.glGetUniformLocation(mProgram, "imageHeightFactor")
+        sharpnessLocation = GLES20.glGetUniformLocation(mProgram, "sharpness")
+        imageWidthFactorLocation = GLES20.glGetUniformLocation(mProgram, "imageWidthFactor")
+        imageHeightFactorLocation = GLES20.glGetUniformLocation(mProgram, "imageHeightFactor")
 
         if (sharpnessLocation == -1 || imageWidthFactorLocation == -1 || imageHeightFactorLocation == -1) {
            Log.e(TAG,"Failed to get uniform locations")
@@ -56,18 +56,18 @@ class EffectSharpen(context: Context) : AbstractEffect(context) {
 
     override fun beforeDraw() {
         super.beforeDraw()
-        GLES30.glUseProgram(mProgram)
-        GLES30.glUniform1f(imageWidthFactorLocation, 1.0f / width)
+        GLES20.glUseProgram(mProgram)
+        GLES20.glUniform1f(imageWidthFactorLocation, 1.0f / width)
         checkGlError("glUniform1f imageWidthFactor")
-        GLES30.glUniform1f(imageHeightFactorLocation, 1.0f / height)
+        GLES20.glUniform1f(imageHeightFactorLocation, 1.0f / height)
         checkGlError("glUniform1f imageHeightFactor")
-        GLES30.glUniform1f(sharpnessLocation, sharpness)
+        GLES20.glUniform1f(sharpnessLocation, sharpness)
         checkGlError("glUniform1f sharpness")
     }
 
 
     fun setSharpness(sharpness: Float) {
         this.sharpness = sharpness
-        GLES30.glUniform1f(sharpnessLocation,sharpness)
+        GLES20.glUniform1f(sharpnessLocation,sharpness)
     }
 }

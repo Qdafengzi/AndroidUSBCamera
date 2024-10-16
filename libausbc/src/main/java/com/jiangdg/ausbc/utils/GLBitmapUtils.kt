@@ -16,7 +16,7 @@
 package com.jiangdg.ausbc.utils
 
 import android.graphics.Bitmap
-import android.opengl.GLES30
+import android.opengl.GLES20
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -36,19 +36,19 @@ object GLBitmapUtils {
         frameBufferId: Int, width: Int, height: Int,
         byteBuffer: ByteBuffer
     ): Bitmap {
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, frameBufferId)
-        GLES30.glReadPixels(
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBufferId)
+        GLES20.glReadPixels(
             0,
             0,
             width,
             height,
-            GLES30.GL_RGBA,
-            GLES30.GL_UNSIGNED_BYTE,
+            GLES20.GL_RGBA,
+            GLES20.GL_UNSIGNED_BYTE,
             byteBuffer
         )
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap?.copyPixelsFromBuffer(byteBuffer)
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         return bitmap
     }
 
@@ -56,17 +56,17 @@ object GLBitmapUtils {
         frameBufferId: Int, width: Int, height: Int,
         byteBuffer: ByteBuffer?
     ) {
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, frameBufferId)
-        GLES30.glReadPixels(
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, frameBufferId)
+        GLES20.glReadPixels(
             0,
             0,
             width,
             height,
-            GLES30.GL_RGBA,
-            GLES30.GL_UNSIGNED_BYTE,
+            GLES20.GL_RGBA,
+            GLES20.GL_UNSIGNED_BYTE,
             byteBuffer
         )
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
     }
 
     fun readPixelToBitmap(width: Int, height: Int): Bitmap? {
@@ -89,13 +89,13 @@ object GLBitmapUtils {
         }
         byteBuffer.clear()
         byteBuffer.order(ByteOrder.LITTLE_ENDIAN)
-        GLES30.glReadPixels(
+        GLES20.glReadPixels(
             0,
             0,
             width,
             height,
-            GLES30.GL_RGBA,
-            GLES30.GL_UNSIGNED_BYTE,
+            GLES20.GL_RGBA,
+            GLES20.GL_UNSIGNED_BYTE,
             byteBuffer
         )
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)

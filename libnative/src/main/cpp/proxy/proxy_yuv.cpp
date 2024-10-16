@@ -173,7 +173,7 @@ void cropNv21(JNIEnv *env, jobject instance, jbyteArray data, jint width, jint h
     int newWidth = 0, newHeight = 0;
     // 调用内部裁剪函数
     cropNv21Internal(reinterpret_cast<char *>(srcData), width, height, aspectRatio,
-                     reinterpret_cast<char *>(desData), &newWidth, &newHeight);
+                     reinterpret_cast<char *>(desData), newWidth, newHeight);
 
     // 设置新的宽度和高度
     jint dimensions[2] = {newWidth, newHeight};

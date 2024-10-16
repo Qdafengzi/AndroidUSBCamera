@@ -38,10 +38,10 @@
 //**********************************************************************
 //
 //**********************************************************************
-#include <cstdlib>
+#include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
-#include <cstring>
+#include <string.h>
 #include "UVCCamera.h"
 #include "Parameters.h"
 #include "libuvc_internal.h"
@@ -889,10 +889,9 @@ int UVCCamera::setExposureMode(int mode) {
 	ENTER();
 	int r = UVC_ERROR_ACCESS;
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE)) {
-		LOGI("ae model:%d", mode);
+//		LOGI("ae:%d", mode);
 		r = uvc_set_ae_mode(mDeviceHandle, mode/* & 0xff*/);
 	}
-    LOGI("set ae model result:%d", r);
 	RETURN(r, int);
 }
 
@@ -904,7 +903,7 @@ int UVCCamera::getExposureMode() {
 	if LIKELY((mDeviceHandle) && (mCtrlSupports & CTRL_AE)) {
 		uint8_t mode;
 		r = uvc_get_ae_mode(mDeviceHandle, &mode, UVC_GET_CUR);
-		LOGI("ae:%d", mode);
+//		LOGI("ae:%d", mode);
 		if (LIKELY(!r)) {
 			r = mode;
 		}
@@ -969,7 +968,6 @@ int UVCCamera::setExposure(int ae_abs) {
 //		LOGI("ae_abs:%d", ae_abs);
 		r = uvc_set_exposure_abs(mDeviceHandle, ae_abs/* & 0xff*/);
 	}
-//    LOGI("ae_abs r:%d", r);
 	RETURN(r, int);
 }
 
@@ -2075,12 +2073,12 @@ int UVCCamera::getPowerlineFrequency() {
 //======================================================================
 // ズーム(abs)調整
 int UVCCamera::updateZoomLimit(int &min, int &max, int &def) {
-    ENTER();
-    int ret = UVC_ERROR_IO;
-    if (mCtrlSupports & CTRL_ZOOM_ABS) {
-        UPDATE_CTRL_VALUES(mZoom, uvc_get_zoom_abs)
-    }
-    RETURN(ret, int);
+	ENTER();
+	int ret = UVC_ERROR_IO;
+	if (mCtrlSupports & CTRL_ZOOM_ABS) {
+		UPDATE_CTRL_VALUES(mZoom, uvc_get_zoom_abs)
+	}
+	RETURN(ret, int);
 }
 
 // ズーム(abs)を設定
@@ -2098,10 +2096,9 @@ int UVCCamera::getZoom() {
 	ENTER();
 	if (mCtrlSupports & CTRL_ZOOM_ABS) {
 		int ret = update_ctrl_values(mDeviceHandle, mZoom, uvc_get_zoom_abs);
-		if (LIKELY(!ret)) {	// 当成功获取最小值和最大值时
+		if (LIKELY(!ret)) {	// 正常に最小・最大値を取得出来た時
 			uint16_t value;
 			ret = uvc_get_zoom_abs(mDeviceHandle, &value, UVC_GET_CUR);
-            LOGI("get zoom ret:%d  value:%d",ret,value);
 			if (LIKELY(!ret))
 				return value;
 		}

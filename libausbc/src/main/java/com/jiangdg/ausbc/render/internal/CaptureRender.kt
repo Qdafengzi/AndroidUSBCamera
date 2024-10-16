@@ -16,7 +16,7 @@
 package com.jiangdg.ausbc.render.internal
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import android.opengl.Matrix
 import com.jiangdg.ausbc.R
 import kotlin.math.cos
@@ -42,11 +42,11 @@ class CaptureRender(context: Context) : AbstractFboRender(context) {
         mMVPMatrix[9] += sin(radius.toDouble()).toFloat()
         mMVPMatrix[10] *= cos(radius.toDouble()).toFloat()
         // 获取句柄
-        mMVPMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uMVPMatrix")
+        mMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
     }
 
     override fun beforeDraw() {
-        GLES30.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0)
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0)
     }
 
     override fun getVertexSourceId(): Int = R.raw.capture_vertex

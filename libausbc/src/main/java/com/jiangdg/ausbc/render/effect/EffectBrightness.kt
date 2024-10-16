@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -27,17 +27,17 @@ class EffectBrightness(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        brightnessLocation = GLES30.glGetUniformLocation(mProgram, "brightness")
+        brightnessLocation = GLES20.glGetUniformLocation(mProgram, "brightness")
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
-        GLES30.glUseProgram(mProgram)
+        GLES20.glUseProgram(mProgram)
         setBrightness(brightness)
     }
     fun setBrightness(brightness: Float) {
         this.brightness = brightness
-        GLES30.glUniform1f(brightnessLocation, brightness)
+        GLES20.glUniform1f(brightnessLocation, brightness)
         checkGlError("glUniform1f brightness")
     }
 

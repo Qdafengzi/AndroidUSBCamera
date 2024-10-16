@@ -1,7 +1,9 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
+import android.opengl.GLES20
 import android.opengl.GLES30
+import com.elvishew.xlog.XLog
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -28,13 +30,13 @@ class EffectHue(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        hueLocation = GLES30.glGetUniformLocation(mProgram, "hueAdjust")
+        hueLocation = GLES20.glGetUniformLocation(mProgram, "hueAdjust")
 
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
-        GLES30.glUseProgram(mProgram)
+        GLES20.glUseProgram(mProgram)
         setHue(hue)
     }
 
@@ -42,7 +44,7 @@ class EffectHue(context: Context) : AbstractEffect(context) {
     fun setHue(hue: Float) {
         this.hue = hue
         val hueAdjust = (this.hue % 360.0f) * Math.PI.toFloat() / 180.0f
-        GLES30.glUniform1f(hueLocation, hueAdjust)
+        GLES20.glUniform1f(hueLocation, hueAdjust)
         checkGlError("glUniform1f hueLocation")
     }
 

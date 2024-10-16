@@ -16,7 +16,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 
@@ -34,14 +34,14 @@ class EffectSoul(context: Context): AbstractEffect(context) {
     override fun getClassifyId(): Int = CameraEffect.CLASSIFY_ID_ANIMATION
 
     override fun init() {
-        mTimeStampsHandler = GLES30.glGetUniformLocation(mProgram, "timeStamps")
+        mTimeStampsHandler = GLES20.glGetUniformLocation(mProgram, "timeStamps")
     }
 
     override fun beforeDraw() {
         if (mTimeCount > 65535) {
             mTimeCount = 0
         }
-        GLES30.glUniform1f(mTimeStampsHandler, (++mTimeCount % 9).toFloat())
+        GLES20.glUniform1f(mTimeStampsHandler, (++mTimeCount % 9).toFloat())
     }
 
     override fun getVertexSourceId(): Int = R.raw.base_vertex

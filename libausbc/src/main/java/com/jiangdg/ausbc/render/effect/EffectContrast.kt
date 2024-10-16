@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
 import com.jiangdg.ausbc.utils.OpenGLUtils.checkGlError
@@ -28,20 +28,20 @@ class EffectContrast(context: Context) : AbstractEffect(context) {
 
     override fun init() {
         super.init()
-        contrastLocation = GLES30.glGetUniformLocation(mProgram, "contrast")
+        contrastLocation = GLES20.glGetUniformLocation(mProgram, "contrast")
         setContrast(contrast)
     }
 
     override fun beforeDraw() {
         super.beforeDraw()
-        GLES30.glUseProgram(mProgram)
+        GLES20.glUseProgram(mProgram)
         setContrast(contrast)
     }
 
 
     fun setContrast(contrast: Float) {
         this.contrast = contrast
-        GLES30.glUniform1f(contrastLocation, contrast)
+        GLES20.glUniform1f(contrastLocation, contrast)
         checkGlError("glUniform1f contrast")
     }
 }

@@ -1,7 +1,7 @@
 package com.jiangdg.ausbc.render.effect
 
 import android.content.Context
-import android.opengl.GLES30
+import android.opengl.GLES20
 import android.util.Log
 import com.jiangdg.ausbc.R
 import com.jiangdg.ausbc.render.effect.bean.CameraEffect
@@ -42,11 +42,11 @@ class EffectImageLevel(context: Context) : AbstractEffect(context) {
         minOutput = floatArrayOf(0.0f, 0.0f, 0.0f)
         maxOutput = floatArrayOf(1.0f, 1.0f, 1.0f)
 
-        minLocation = GLES30.glGetUniformLocation(mProgram, "levelMinimum")
-        midLocation = GLES30.glGetUniformLocation(mProgram, "levelMiddle")
-        maxLocation = GLES30.glGetUniformLocation(mProgram, "levelMaximum")
-        minOutputLocation = GLES30.glGetUniformLocation(mProgram, "minOutput")
-        maxOutputLocation = GLES30.glGetUniformLocation(mProgram, "maxOutput")
+        minLocation = GLES20.glGetUniformLocation(mProgram, "levelMinimum")
+        midLocation = GLES20.glGetUniformLocation(mProgram, "levelMiddle")
+        maxLocation = GLES20.glGetUniformLocation(mProgram, "levelMaximum")
+        minOutputLocation = GLES20.glGetUniformLocation(mProgram, "minOutput")
+        maxOutputLocation = GLES20.glGetUniformLocation(mProgram, "maxOutput")
 
         // Check if all uniforms were found
         if (minLocation == -1 || midLocation == -1 || maxLocation == -1 ||
@@ -111,19 +111,19 @@ class EffectImageLevel(context: Context) : AbstractEffect(context) {
     }
 
     private fun updateUniforms() {
-        GLES30.glUniform3fv(minLocation, 1, FloatBuffer.wrap(min))
+        GLES20.glUniform3fv(minLocation, 1, FloatBuffer.wrap(min))
         checkGlError("glUniform3fv minLocation")
 
-        GLES30.glUniform3fv(midLocation, 1, FloatBuffer.wrap(mid))
+        GLES20.glUniform3fv(midLocation, 1, FloatBuffer.wrap(mid))
         checkGlError("glUniform3fv midLocation")
 
-        GLES30.glUniform3fv(maxLocation, 1, FloatBuffer.wrap(max))
+        GLES20.glUniform3fv(maxLocation, 1, FloatBuffer.wrap(max))
         checkGlError("glUniform3fv maxLocation")
 
-        GLES30.glUniform3fv(minOutputLocation, 1, FloatBuffer.wrap(minOutput))
+        GLES20.glUniform3fv(minOutputLocation, 1, FloatBuffer.wrap(minOutput))
         checkGlError("glUniform3fv minOutputLocation")
 
-        GLES30.glUniform3fv(maxOutputLocation, 1, FloatBuffer.wrap(maxOutput))
+        GLES20.glUniform3fv(maxOutputLocation, 1, FloatBuffer.wrap(maxOutput))
         checkGlError("glUniform3fv maxOutputLocation")
     }
 }

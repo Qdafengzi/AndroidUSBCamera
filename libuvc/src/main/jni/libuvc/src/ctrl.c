@@ -575,7 +575,8 @@ uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, uint8_t iris) {
 }
 
 //----------------------------------------------------------------------
-uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,enum uvc_req_code req_code) {
+uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,
+		enum uvc_req_code req_code) {
 	uint8_t data[2];
 	uvc_error_t ret;
 
@@ -584,13 +585,10 @@ uvc_error_t uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *zoom,enum uvc_
 			devh->info->ctrl_if.input_term_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
-    LOGI("uvc_get_zoom_abs  max:%d min:%d  sizeOfData:%d  ret:%d", data[0], data[1],sizeof(data),ret);
 	if (LIKELY(ret == sizeof(data))) {
 		*zoom = SW_TO_SHORT(data);
-        LOGI("uvc_get_zoom_abs ok");
 		return UVC_SUCCESS;
 	} else {
-        LOGI("uvc_get_zoom_abs fail");
 		return ret;
 	}
 }
@@ -1385,22 +1383,15 @@ uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness) {
 
 	SHORT_TO_SW(sharpness, data);
 
-    //LOGI("set sharpness %d",sharpness );
 	ret = libusb_control_transfer(devh->usb_devh, REQ_TYPE_SET, UVC_SET_CUR,
 			UVC_PU_SHARPNESS_CONTROL << 8,
 			devh->info->ctrl_if.processing_unit_descs->request,
 			data, sizeof(data), CTRL_TIMEOUT_MILLIS);
 
-
-	if (LIKELY(ret == sizeof(data))){
-        //LOGI("set sharpness success");
-        return UVC_SUCCESS;
-    }
-
-	else{
-        //LOGI("set sharpness fail");
+	if (LIKELY(ret == sizeof(data)))
+		return UVC_SUCCESS;
+	else
 		return ret;
-    }
 }
 
 uvc_error_t uvc_get_gamma(uvc_device_handle_t *devh, uint16_t *gamma,
