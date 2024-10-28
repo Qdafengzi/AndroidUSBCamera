@@ -16,7 +16,6 @@
 package com.camera.demo
 
 import android.Manifest.permission.*
-import android.app.ProgressDialog.show
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -30,6 +29,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker
 import androidx.fragment.app.Fragment
 import com.camera.demo.databinding.ActivityMainBinding
+import com.camera.demo.uvc_camera.UvcCameraFragment
 
 /**
  * Demos of camera usage

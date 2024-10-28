@@ -1,12 +1,6 @@
 include ':app'
 
-// For debug online
-include ':libausbc'
-include ':libuvc'
-include ':libnative'
-
 include ':core'
 include ':gpuimage'
 include ':libuvccamera'
 
-include ':sample'

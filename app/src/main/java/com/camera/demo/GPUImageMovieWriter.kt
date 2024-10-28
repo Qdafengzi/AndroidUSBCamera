@@ -94,18 +94,18 @@ class GPUImageMovieWriter(private val cameraXListener: CameraXListener) : GPUIma
                 XLogger.d("video bug GPU write already in recording")
                 return@runOnDraw
             }
-//            try {
+            try {
                 mMuxer = MediaMuxerWrapper(outputPath)
                 // for video capturing
                 mVideoEncoder = MediaVideoEncoder(mMuxer, mMediaEncoderListener, width, height, frameRate)
                 mMuxer?.prepare()
                 prepareCallback(true)
                 XLogger.d("video start record")
-//            } catch (e: Exception) {
-//                prepareCallback(false)
-//                XLogger.e("record video bug error" + e.message)
-//                cameraXListener.recordPrepareError(e.message ?: "")
-//            }
+            } catch (e: Exception) {
+                prepareCallback(false)
+                XLogger.e("record video bug error" + e.message)
+                cameraXListener.recordPrepareError(e.message ?: "")
+            }
         }
     }
 

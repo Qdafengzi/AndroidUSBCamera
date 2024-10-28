@@ -2,6 +2,8 @@ package com.serenegiant.usb;
 
 import android.util.Log;
 
+import com.herohan.uvcapp.BuildConfig;
+
 public class UVCControl {
 
     private static final String TAG = UVCControl.class.getSimpleName();
@@ -222,6 +224,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getAutoExposureModeMin(){
+        return mAutoExposureModeMin;
+    }
+    public int getAutoExposureModeMax(){
+        return mAutoExposureModeMax;
+    }
+    public int getAutoExposureModeDef(){
+        return mAutoExposureModeDef;
+    }
+
     public synchronized int[] updateAutoExposureModeLimit() {
         int[] ints = nativeObtainAutoExposureModeLimit(mNativePtr);
         if (ints != null) {
@@ -300,6 +312,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getAutoExposurePriorityMin(){
+        return mAutoExposurePriorityMin;
+    }
+    public int getAutoExposurePriorityMax(){
+        return mAutoExposurePriorityMax;
+    }
+    public int getAutoExposurePriorityDef(){
+        return mAutoExposurePriorityDef;
+    }
+
     public synchronized int[] updateAutoExposurePriorityLimit() {
         int[] ints = nativeObtainAutoExposurePriorityLimit(mNativePtr);
         if (ints != null) {
@@ -338,6 +360,17 @@ public class UVCControl {
     }
 
     //================================================================================
+
+    public int getExposureTimeMin(){
+        return mExposureTimeMin;
+    }
+
+    public int getExposureTimeMax(){
+        return mExposureTimeMax;
+    }
+    public int getExposureTimeDef(){
+        return mExposureTimeDef;
+    }
 
     public synchronized int[] updateExposureTimeAbsoluteLimit() {
         int[] ints = nativeObtainExposureTimeAbsoluteLimit(mNativePtr);
@@ -379,6 +412,18 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getExposureTimeRelativeMin(){
+        return mExposureTimeRelativeMin;
+    }
+    public int getExposureTimeRelativeMax(){
+        return mExposureTimeRelativeMax;
+    }
+    public int getExposureTimeRelativeDef(){
+        return mExposureTimeRelativeDef;
+    }
+
+
+
     public synchronized int[] updateExposureTimeRelativeLimit() {
         int[] ints = nativeObtainExposureTimeRelativeLimit(mNativePtr);
         if (ints != null) {
@@ -414,6 +459,17 @@ public class UVCControl {
     }
 
     //================================================================================
+
+    public int getFocusAbsoluteMin(){
+        return mFocusAbsoluteMin;
+    }
+
+    public int getFocusAbsoluteMax(){
+        return mFocusAbsoluteMax;
+    }
+    public int getFocusAbsoluteDef(){
+        return mFocusAbsoluteDef;
+    }
 
     public synchronized int[] updateFocusAbsoluteLimit() {
         int[] ints = nativeObtainFocusAbsoluteLimit(mNativePtr);
@@ -478,6 +534,16 @@ public class UVCControl {
     }
 
     //================================================================================
+    public int  getFocusRelativeMin(){
+        return mFocusRelativeMin;
+    }
+
+    public int  getFocusRelativeMax(){
+        return mFocusRelativeMax;
+    }
+    public int  getFocusRelativeDef(){
+        return mFocusRelativeDef;
+    }
 
     public synchronized int[] updateFocusRelativeLimit() {
         int[] ints = nativeObtainFocusRelativeLimit(mNativePtr);
@@ -515,6 +581,16 @@ public class UVCControl {
     }
 
     //================================================================================
+    public int getIrisAbsoluteMin(){
+        return mIrisAbsoluteMin;
+    }
+
+    public int getIrisAbsoluteMax(){
+        return mIrisAbsoluteMax;
+    }
+    public int getIrisAbsoluteDef(){
+        return mIrisAbsoluteDef;
+    }
 
     public synchronized int[] updateIrisAbsoluteLimit() {
         int[] ints = nativeObtainIrisAbsoluteLimit(mNativePtr);
@@ -552,6 +628,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getIrisRelativeMin(){
+        return mIrisRelativeMin;
+    }
+    public int getIrisRelativeMax(){
+        return mIrisRelativeMax;
+    }
+    public int getIrisRelativeDef(){
+        return mIrisRelativeDef;
+    }
+
     public synchronized int[] updateIrisRelativeLimit() {
         int[] ints = nativeObtainIrisRelativeLimit(mNativePtr);
         if (ints != null) {
@@ -588,7 +674,20 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getZoomAbsoluteMin(){
+        return mZoomAbsoluteMin;
+    }
+
+    public int getZoomAbsoluteMax(){
+        return mZoomAbsoluteMax;
+    }
+
+    public int getZoomAbsoluteDef(){
+        return mZoomAbsoluteDef;
+    }
+
     public synchronized int[] updateZoomAbsoluteLimit() {
+        Log.d("ATg","zoom zoomMax: updateZoomAbsoluteLimit");
         int[] ints = nativeObtainZoomAbsoluteLimit(mNativePtr);
         if (ints != null) {
             mZoomAbsoluteMin = ints[0];
@@ -652,6 +751,16 @@ public class UVCControl {
     }
 
     //================================================================================
+    public int getZoomRelativeMin(){
+        return mZoomRelativeMin;
+    }
+    public int getZoomRelativeMax(){
+        return mZoomRelativeMax;
+    }
+    public int getZoomRelativeDef(){
+        return mZoomRelativeDef;
+    }
+
 
     public synchronized int[] updateZoomRelativeLimit() {
         int[] ints = nativeObtainZoomRelativeLimit(mNativePtr);
@@ -887,6 +996,15 @@ public class UVCControl {
     }
 
     //================================================================================
+    public int getFocusAutoMin(){
+        return mFocusAutoMin;
+    }
+    public int getFocusAutoMax(){
+        return mFocusAutoMax;
+    }
+    public int getFocusAutoDef(){
+        return mFocusAutoDef;
+    }
 
     public synchronized int[] updateFocusAutoLimit() {
         int[] ints = nativeObtainFocusAutoLimit(mNativePtr);
@@ -957,6 +1075,16 @@ public class UVCControl {
 //=====Processing Unit Control===========================================================
 //================================================================================
 
+    public int getBrightnessMin(){
+        return mBrightnessMin;
+    }
+    public int getBrightnessMax(){
+        return mBrightnessMax;
+    }
+    public int getBrightnessDef(){
+        return mBrightnessDef;
+    }
+
     public synchronized int[] updateBrightnessLimit() {
         int[] ints = nativeObtainBrightnessLimit(mNativePtr);
         if (ints != null) {
@@ -1016,6 +1144,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getContrastMin(){
+        return mContrastMin;
+    }
+    public int getContrastMax(){
+        return mContrastMax;
+    }
+    public int getContrastDef(){
+        return mContrastDef;
+    }
+
     public synchronized int[] updateContrastLimit() {
         int[] ints = nativeObtainContrastLimit(mNativePtr);
         if (ints != null) {
@@ -1074,6 +1212,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getHueMin(){
+        return mHueMin;
+    }
+    public int getHueMax(){
+        return mHueMax;
+    }
+    public int getHueDef(){
+        return mHueDef;
+    }
+
     public synchronized int[] updateHueLimit() {
         int[] ints = nativeObtainHueLimit(mNativePtr);
         if (ints != null) {
@@ -1130,6 +1278,16 @@ public class UVCControl {
     }
 
     //================================================================================
+
+    public int getSaturationMin(){
+        return mSaturationMin;
+    }
+    public int getSaturationMax(){
+        return mSaturationMax;
+    }
+    public int getSaturationDef(){
+        return mSaturationDef;
+    }
 
     public synchronized int[] updateSaturationLimit() {
         int[] ints = nativeObtainSaturationLimit(mNativePtr);
@@ -1188,6 +1346,19 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getSharpnessMin(){
+        return mSharpnessMin;
+    }
+
+    public int getSharpnessMax(){
+        return mSharpnessMax;
+    }
+    public int getSharpnessDef(){
+        return mSharpnessDef;
+    }
+
+
+
     public synchronized int[] updateSharpnessLimit() {
         int[] ints = nativeObtainSharpnessLimit(mNativePtr);
         if (ints != null) {
@@ -1245,6 +1416,17 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getGammaMin(){
+        return mGammaMin;
+    }
+
+    public int getGammaMax(){
+        return mGammaMax;
+    }
+    public int getGammaDef(){
+        return mGammaDef;
+    }
+
     public synchronized int[] updateGammaLimit() {
         int[] ints = nativeObtainGammaLimit(mNativePtr);
         if (ints != null) {
@@ -1301,6 +1483,17 @@ public class UVCControl {
     }
 
     //================================================================================
+
+    public int getWhiteBalanceMin(){
+        return mWhiteBalanceMin;
+    }
+    public int getWhiteBalanceMax(){
+        return mWhiteBalanceMax;
+    }
+
+    public int getWhiteBalanceDef(){
+        return mWhiteBalanceDef;
+    }
 
     public synchronized int[] updateWhiteBalanceLimit() {
         int[] ints = nativeObtainWhiteBalanceLimit(mNativePtr);
@@ -1436,6 +1629,17 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getGainMin(){
+        return mGainMin;
+    }
+
+    public int getGainMax(){
+        return mGainMax;
+    }
+    public int getGainDef(){
+        return mGainDef;
+    }
+
     public synchronized int[] updateGainLimit() {
         int[] ints = nativeObtainGainLimit(mNativePtr);
         if (ints != null) {
@@ -1493,6 +1697,16 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getPowerlineFrequencyMin(){
+        return mPowerlineFrequencyMin;
+    }
+    public int getPowerlineFrequencyMax(){
+        return mPowerlineFrequencyMax;
+    }
+    public int getPowerlineFrequencyDef(){
+        return mPowerlineFrequencyDef;
+    }
+
     public synchronized int[] updatePowerlineFrequencyLimit() {
         int[] ints = nativeObtainPowerlineFrequencyLimit(mNativePtr);
         if (ints != null) {
@@ -1525,6 +1739,17 @@ public class UVCControl {
     }
 
     //================================================================================
+    public int getHueAutoMin(){
+        return mHueAutoMin;
+    }
+
+    public int getHueAutoMax(){
+        return mHueAutoMax;
+    }
+    public int getHueAutoDef(){
+        return mHueAutoDef;
+    }
+
 
     public synchronized int[] updateHueAutoLimit() {
         int[] ints = nativeObtainHueAutoLimit(mNativePtr);
@@ -1558,6 +1783,18 @@ public class UVCControl {
     }
 
     //================================================================================
+
+    public int getWhiteBalanceAutoMin(){
+        return mWhiteBalanceAutoMin;
+    }
+    public int getWhiteBalanceAutoMax(){
+        return mWhiteBalanceAutoMax;
+    }
+    public int getWhiteBalanceAutoDef(){
+        return mWhiteBalanceAutoDef;
+    }
+
+
 
     public synchronized int[] updateWhiteBalanceAutoLimit() {
         int[] ints = nativeObtainWhiteBalanceAutoLimit(mNativePtr);
@@ -1747,6 +1984,18 @@ public class UVCControl {
 
     //================================================================================
 
+    public int getContrastAutoMin(){
+        return mContrastAutoMin;
+    }
+
+    public int getContrastAutoMax(){
+        return mContrastAutoMax;
+    }
+    public int getContrastAutoDef(){
+        return mContrastAutoDef;
+    }
+
+
     public synchronized int[] updateContrastAutoLimit() {
         int[] ints = nativeObtainContrastAutoLimit(mNativePtr);
         if (ints != null) {
@@ -1832,7 +2081,7 @@ public class UVCControl {
                     updateAnalogVideoLockStateLimit();
                     updateContrastAutoLimit();
                 }
-                if (false) {
+                if (BuildConfig.DEBUG) {
                     dumpCameraTerminal(mCameraTerminalControls);
                     dumpProcessingUnit(mProcessingUnitControls);
                     Log.v(TAG, String.format("Brightness:min=%d,max=%d,def=%d", mBrightnessMin, mBrightnessMax, mBrightnessDef));
@@ -1843,6 +2092,7 @@ public class UVCControl {
                     Log.v(TAG, String.format("Saturation:min=%d,max=%d,def=%d", mSaturationMin, mSaturationMax, mSaturationDef));
                     Log.v(TAG, String.format("Hue:min=%d,max=%d,def=%d", mHueMin, mHueMax, mHueDef));
                     Log.v(TAG, String.format("Zoom:min=%d,max=%d,def=%d", mZoomAbsoluteMin, mZoomAbsoluteMax, mZoomAbsoluteDef));
+                    Log.v(TAG, String.format("Zoom rel:min=%d,max=%d,def=%d", mZoomRelativeMin, mZoomRelativeMax,mZoomRelativeDef));
                     Log.v(TAG, String.format("WhiteBalance:min=%d,max=%d,def=%d", mWhiteBalanceMin, mWhiteBalanceMax, mWhiteBalanceDef));
                     Log.v(TAG, String.format("Focus:min=%d,max=%d,def=%d", mFocusAbsoluteMin, mFocusAbsoluteMax, mFocusAbsoluteDef));
                     Log.v(TAG, String.format("AutoExposureMode:min=%d,max=%d,def=%d", mAutoExposureModeMin, mAutoExposureModeMax, mAutoExposureModeDef));
