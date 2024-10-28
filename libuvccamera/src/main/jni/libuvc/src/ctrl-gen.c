@@ -633,7 +633,9 @@ uvc_error_t uvc_set_iris_rel(uvc_device_handle_t *devh, uint8_t iris_rel) {
         return ret;
 }
 
-/** @ingroup ctrl
+/**
+ * 获取失败！！
+ * @ingroup ctrl
  * @brief Reads the ZOOM_ABSOLUTE control.
  * @param devh UVC device handle
  * @param[out] focal_length TODO
@@ -643,7 +645,6 @@ uvc_error_t
 uvc_get_zoom_abs(uvc_device_handle_t *devh, uint16_t *focal_length, enum uvc_req_code req_code) {
     uint8_t data[2];
     uvc_error_t ret;
-
     ret = libusb_control_transfer(
             devh->usb_devh,
             REQ_TYPE_GET, req_code,
@@ -1734,7 +1735,6 @@ uvc_get_sharpness(uvc_device_handle_t *devh, uint16_t *sharpness, enum uvc_req_c
 uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness) {
     uint8_t data[2];
     uvc_error_t ret;
-
     SHORT_TO_SW(sharpness, data + 0);
 
     ret = libusb_control_transfer(
@@ -1746,10 +1746,12 @@ uvc_error_t uvc_set_sharpness(uvc_device_handle_t *devh, uint16_t sharpness) {
             sizeof(data),
             LIBUSB_CONTROL_TRANSFER_TIMEOUT);
 
-    if (ret == sizeof(data))
+    if (ret == sizeof(data)){
         return UVC_SUCCESS;
-    else
+    }
+    else{
         return ret;
+    }
 }
 
 /** @ingroup ctrl

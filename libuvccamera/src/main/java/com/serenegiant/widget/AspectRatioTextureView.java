@@ -27,6 +27,9 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.TextureView;
 
 import com.herohan.uvcapp.BuildConfig;
@@ -117,6 +120,70 @@ public class AspectRatioTextureView extends TextureView    // API >= 14
         }
 
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+
+    //    public ScaleGestureDetector mScaleGestureDetector;
+    private int mSurfaceTextureWidth;
+    private int mSurfaceTextureHeight;
+    private float mSavedScaleFactor = 1.0f;
+    private int mMaxZoom;
+    public static final float MAX_ZOOM_GESTURE_SIZE = 2.5f; // This affects the pinch to zoom gesture
+
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return mScaleGestureDetector.onTouchEvent(event);
+    }
+
+    ScaleGestureDetector mScaleGestureDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.OnScaleGestureListener() {
+
+        @Override
+        public boolean onScaleBegin(ScaleGestureDetector detector) {
+            return true;
+        }
+
+        @Override
+        public boolean onScale(ScaleGestureDetector detector) {
+            setCameraZoom(detector.getScaleFactor() * mSavedScaleFactor);
+            return false;
+        }
+
+        @Override
+        public void onScaleEnd(ScaleGestureDetector detector) {
+            // Set saved scale factor and make sure it's within legal range
+            mSavedScaleFactor = mSavedScaleFactor * detector.getScaleFactor();
+            if (mSavedScaleFactor < 1.0f) {
+                mSavedScaleFactor = 1.0f;
+            } else if (mSavedScaleFactor > MAX_ZOOM_GESTURE_SIZE + 1) {
+                mSavedScaleFactor = MAX_ZOOM_GESTURE_SIZE + 1;
+            }
+
+            setCameraZoom(mSavedScaleFactor);
+        }
+    });
+
+    private void setCameraZoom(float zoomScaleFactor) {
+        // Convert gesture to camera zoom value
+        int zoom = (int) ((zoomScaleFactor - 1) * mMaxZoom / MAX_ZOOM_GESTURE_SIZE);
+        // Sanity check for zoom level
+        if (zoom > mMaxZoom) {
+            zoom = mMaxZoom;
+        } else if (zoom < 0) {
+            zoom = 0;
+        }
+        int zoomVal = (int) zoomScaleFactor;
+        mZoomCallback.onZoomView(zoomVal);
+    }
+
+    private IZoomCallback mZoomCallback;
+
+    public void setZoomCallback(IZoomCallback callback){
+        mZoomCallback = callback;
+    }
+
+    public interface IZoomCallback{
+        void onZoomView(int zoom);
     }
 
 }

@@ -204,7 +204,9 @@ open class UvcCameraFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mBinding.aspectView.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT)
-
+        mBinding.aspectView.setZoomCallback {zoom->
+            XLogger.d("zoom--->")
+        }
         mBinding.aspectView.surfaceTextureListener = object :TextureView.SurfaceTextureListener{
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                 mCameraHelper?.addSurface(surface, false)
@@ -774,17 +776,15 @@ open class UvcCameraFragment : Fragment() {
 
         SliderView(
             name = "Zoom",
-            range = 1f..60f,
+            range = 1f..100f,
             sliderValue = zoomSliderValue,
             onValueChange = { progress ->
                 zoomSliderValue.floatValue = progress
-
                 mCameraHelper?.uvcControl?.apply {
                     updateZoomAbsoluteLimit()
-                    zoomRelative = progress.toInt()
                     XLogger.d("zoom isZoomAbsoluteEnable:${isZoomAbsoluteEnable}")
-                    XLogger.d("zoom isZoomRelativeEnable:${isZoomRelativeEnable}")
-                    zoomAbsolutePercent = progress.toInt()
+//                    zoomAbsolutePercent = progress.toInt()
+                    zoomAbsolute = progress.toInt()
                 }
             }
         )
@@ -918,9 +918,8 @@ open class UvcCameraFragment : Fragment() {
             onValueChange = { progress ->
                 sharpnessSliderValue.floatValue = progress
                 mCameraHelper?.uvcControl?.apply {
-                    sharpness = progress.toInt()
+                    sharpnessPercent = progress.toInt()
                 }
-
             }
         )
 

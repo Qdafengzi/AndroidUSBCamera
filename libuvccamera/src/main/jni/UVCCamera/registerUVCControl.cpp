@@ -441,6 +441,7 @@ static jintArray nativeObtainZoomAbsoluteLimit(JNIEnv *env, jobject thiz,
     if (LIKELY(control)) {
         int min, max, def;
         int _result = control->obtainZoomAbsoluteLimit(min, max, def);
+        //LOGE("获取 zoom: %d min:%d max:%d def:%d",_result,min,max,def);
         if (!_result) {
             result = getJintArray(env, (int[]) {min, max, def}, 3);
         }

@@ -14,7 +14,6 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-import com.herohan.uvcapp.utils.Watchdog;
 import com.serenegiant.usb.Format;
 import com.serenegiant.usb.IButtonCallback;
 import com.serenegiant.usb.IFrameCallback;
@@ -322,7 +321,6 @@ public class CameraHelper implements ICameraHelper {
 
     @Override
     public UVCControl getUVCControl() {
-        if (DEBUG) Log.d(TAG, "getUVCControl:");
         if (mService != null && mUsbDevice != null) {
             try {
                 return mService.getUVCControl(mUsbDevice);

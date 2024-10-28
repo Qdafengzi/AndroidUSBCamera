@@ -1588,7 +1588,7 @@ public class UVCControl {
     }
 
     public synchronized void resetWhiteBalanceCompo() {
-        nativeSetZoomRelative(mNativePtr, mWhiteBalanceCompoDef);
+        nativeSetWhiteBalanceCompo(mNativePtr, mWhiteBalanceCompoDef);
     }
 
     //================================================================================

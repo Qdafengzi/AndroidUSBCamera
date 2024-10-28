@@ -44,13 +44,15 @@ zoom 和sharpness不管用
     v2 支持zoom
 
 第三方库 lib1
-    可以设置分辨率  但是callbackFrame 分辨率没改变
-
+    
     分辨率的切换 ok
     最大 最小值 ok
     曝光  ok
     对焦 ok
     自动对焦 ok
+
+    问题1.可以设置分辨率  但是callbackFrame 分辨率没改变
+    zoom 有问题
     
     
 
