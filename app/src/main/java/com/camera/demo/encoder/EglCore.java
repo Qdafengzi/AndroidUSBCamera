@@ -25,7 +25,7 @@ import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
 import android.view.Surface;
 
-import com.camera.utils.XLogger;
+import com.gemlightbox.core.utils.XLogger;
 
 
 /**
@@ -169,7 +169,7 @@ public final class EglCore {
         int[] numConfigs = new int[1];
         if (!EGL14.eglChooseConfig(mEGLDisplay, attribList, 0, configs, 0, configs.length,
                 numConfigs, 0)) {
-            XLogger.w( "unable to find RGB8888 / " + version + " EGLConfig");
+            XLogger.d( "unable to find RGB8888 / " + version + " EGLConfig");
             return null;
         }
         return configs[0];
@@ -204,7 +204,7 @@ public final class EglCore {
                 // the EGL state, so if a surface or context is still current on another
                 // thread we can't fully release it here.  Exceptions thrown from here
                 // are quietly discarded.  Complain in the log file.
-               XLogger.w("WARNING: EglCore was not explicitly released -- state may be leaked");
+               XLogger.d("WARNING: EglCore was not explicitly released -- state may be leaked");
                 release();
             }
         } finally {
@@ -356,7 +356,7 @@ public final class EglCore {
         display = EGL14.eglGetCurrentDisplay();
         context = EGL14.eglGetCurrentContext();
         surface = EGL14.eglGetCurrentSurface(EGL14.EGL_DRAW);
-        XLogger.i("Current EGL (" + msg + "): display=" + display + ", context=" + context +
+        XLogger.d("Current EGL (" + msg + "): display=" + display + ", context=" + context +
                 ", surface=" + surface);
     }
 
@@ -366,7 +366,7 @@ public final class EglCore {
     private void checkEglError(String msg) {
         int error;
         if ((error = EGL14.eglGetError()) != EGL14.EGL_SUCCESS) {
-            XLogger.e("错误------》error:"+error);
+            XLogger.d("错误------》error:"+error);
         }
     }
 }

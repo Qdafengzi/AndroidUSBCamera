@@ -22,18 +22,16 @@ package com.camera.demo.encoder;
  * All files in the folder are under this Apache License, Version 2.0.
 */
 
+import android.annotation.SuppressLint;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 
-
-import com.camera.utils.XLogger;
+import com.gemlightbox.core.utils.XLogger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public abstract class MediaEncoder implements Runnable {
-    private static final boolean DEBUG = false;
-    private static final String TAG = "MediaEncoder";
 
     protected static final int TIMEOUT_USEC = 10000;    // 10[msec]
     protected static final int MSG_FRAME_AVAILABLE = 1;
@@ -152,7 +150,6 @@ public abstract class MediaEncoder implements Runnable {
             }
 
             if (mInputError) {
-                XLogger.d("录制暂停-----》");
                 inputError();
                 release();
                 break;
@@ -175,8 +172,8 @@ public abstract class MediaEncoder implements Runnable {
                 synchronized (mSync) {
                     try {
                         mSync.wait();
-                    } catch (final InterruptedException e) {
-                        XLogger.d("录制暂停  打断");
+                    } catch (final Exception e) {
+                        XLogger.d("error:"+e.getMessage());
                         break;
                     }
                 }
@@ -215,7 +212,6 @@ public abstract class MediaEncoder implements Runnable {
             if (!mIsCapturing || mRequestStop) {
                 return;
             }
-            XLogger.d("录制--------》 zanting");
             this.recordListener = recordListener;
             mRequestStop = true;    // for rejecting newer frame
             mSync.notifyAll();
@@ -234,12 +230,11 @@ public abstract class MediaEncoder implements Runnable {
         try {
             mListener.onStopped(this);
         } catch (Exception e) {
-          XLogger.e("failed onStopped"+ e.getMessage());
+          XLogger.d("failed onStopped"+ e.getMessage());
         }
         mIsCapturing = false;
         if (mMediaCodec != null) {
             try {
-                XLogger.d("录制--------》 暂停");
                 mMediaCodec.stop();
                 mMediaCodec.release();
                 mMediaCodec = null;
@@ -290,25 +285,25 @@ public abstract class MediaEncoder implements Runnable {
                 final ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
                 inputBuffer.clear();
                 if (buffer != null) {
-                    XLogger.d("录制------>put(buffer)");
+                    XLogger.d("------>put(buffer)");
                     inputBuffer.put(buffer);
                 }
 //                if (DEBUG) Log.v(TAG, "encode:queueInputBuffer");
                 if (length <= 0) {
                     // send EOS
                     mIsEOS = true;
-                  XLogger.d( "录制 send BUFFER_FLAG_END_OF_STREAM");
+                  XLogger.d( "send BUFFER_FLAG_END_OF_STREAM");
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, 0,
                             presentationTimeUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     break;
                 } else {
-                    XLogger.d( "录制 length 》=0");
+                    XLogger.d( " length 》=0");
                     mMediaCodec.queueInputBuffer(inputBufferIndex, 0, length,
                             presentationTimeUs, 0);
                 }
                 break;
             } else if (inputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                XLogger.d("录制------>INFO_TRY_AGAIN_LATER");
+                XLogger.d("------>INFO_TRY_AGAIN_LATER");
                 // wait for MediaCodec encoder is ready to encode
                 // nothing to do here because MediaCodec#dequeueInputBuffer(TIMEOUT_USEC)
                 // will wait for maximum TIMEOUT_USEC(10msec) on each call
@@ -319,6 +314,7 @@ public abstract class MediaEncoder implements Runnable {
     /**
      * drain encoded data and write them to muxer
      */
+    @SuppressLint("SuspiciousIndentation")
     protected void drain() {
         if (mMediaCodec == null) return;
         ByteBuffer[] encoderOutputBuffers = null;
@@ -326,7 +322,7 @@ public abstract class MediaEncoder implements Runnable {
             encoderOutputBuffers = mMediaCodec.getOutputBuffers();
         } catch (IllegalStateException e) {
 
-          XLogger.e(" mMediaCodec.getOutputBuffers() error"+e.getMessage());
+            XLogger.e(" mMediaCodec.getOutputBuffers() error"+e.getMessage());
             return;
         }
 
@@ -339,27 +335,21 @@ public abstract class MediaEncoder implements Runnable {
         }
         LOOP: while (mIsCapturing) {
             try {
-                XLogger.d("录制进度---------》1");
                 outputBufferIndex = mMediaCodec.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
             } catch (IllegalStateException e) {
-                XLogger.d("录制进度---------》2");
                 outputBufferIndex = MediaCodec.INFO_TRY_AGAIN_LATER;
             }
             if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                XLogger.d("录制进度---------》3");
                 // wait 5 counts(=TIMEOUT_USEC x 5 = 50msec) until data/EOS come
                 if (!mIsEOS) {
-                XLogger.d("录制进度---------》4");
                     if (++count > 5)
                         break LOOP;        // out of while
                 }
             } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                XLogger.d("录制进度---------》5");
                 XLogger.v( "INFO_OUTPUT_BUFFERS_CHANGED");
                 // this shoud not come when encoding
                 encoderOutputBuffers = mMediaCodec.getOutputBuffers();
             } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                XLogger.d("录制进度---------》6");
                 XLogger.v( "INFO_OUTPUT_FORMAT_CHANGED");
                 if (mMuxerStarted) {    // second time request is error
                     throw new RuntimeException("format changed twice");
@@ -371,21 +361,18 @@ public abstract class MediaEncoder implements Runnable {
                     // we should wait until muxer is ready
                     synchronized (muxer) {
                         while (!muxer.isStarted())
-                            XLogger.d("录制进度---------》7");
                             try {
                                 muxer.wait(100);
                             } catch (final InterruptedException e) {
-                                XLogger.e("错误----？"+e.getMessage());
+                                XLogger.e("error----InterruptedException？"+e.getMessage());
                                 break LOOP;
                             }
                     }
                 }
             } else if (outputBufferIndex < 0) {
-                XLogger.d("录制进度---------》7");
                 // unexpected status
                 XLogger.d( "drain:unexpected result from encoder#dequeueOutputBuffer: " + outputBufferIndex);
             } else {
-                XLogger.d("录制进度---------》8");
                 final ByteBuffer encodedData = encoderOutputBuffers[outputBufferIndex];
                 if (encodedData == null) {
                     throw new RuntimeException("encoderOutputBuffer " + outputBufferIndex + " was null");
@@ -402,7 +389,6 @@ public abstract class MediaEncoder implements Runnable {
                         // muxer is not ready...this will prrograming failure.
                         throw new RuntimeException("drain:muxer hasn't started");
                     }
-                    XLogger.d("录制进度---------》9");
                     // write encoded data to muxer(need to adjust presentationTimeUs.
                     mBufferInfo.presentationTimeUs = getPTSUs();
                     muxer.writeSampleData(mTrackIndex, encodedData, mBufferInfo);
@@ -411,7 +397,6 @@ public abstract class MediaEncoder implements Runnable {
                 // return buffer to encoder
                 mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
                 if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                    XLogger.d("录制进度---------》10");
                     // when EOS come.
                     mIsCapturing = false;
                     break;      // out of while

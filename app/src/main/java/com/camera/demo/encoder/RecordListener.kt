@@ -1,5 +1,5 @@
-package com.camera.demo.encoder;
+package com.camera.demo.encoder
 
-public interface RecordListener {
-    void onStop();
+interface RecordListener {
+    fun onStop()
 }

@@ -16,30 +16,28 @@
 
 package jp.co.cyberagent.android.gpuimage.filter;
 
+import static jp.co.cyberagent.android.gpuimage.GPUImageRenderer.CUBE;
+import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
+
 import android.annotation.SuppressLint;
-import android.opengl.GLES30;
 import android.opengl.GLES30;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import jp.co.cyberagent.android.gpuimage.util.Rotation;
 import jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil;
-
-import static jp.co.cyberagent.android.gpuimage.GPUImageRenderer.CUBE;
-import static jp.co.cyberagent.android.gpuimage.util.TextureRotationUtil.TEXTURE_NO_ROTATION;
 
 /**
  * Resembles a filter that consists of multiple filters applied after each
  * other.
  */
 public class GPUImageFilterGroup extends GPUImageFilter {
-
-    private List<GPUImageFilter> filters;
-    private List<GPUImageFilter> mergedFilters;
+    private CopyOnWriteArrayList<GPUImageFilter> filters;
+    private CopyOnWriteArrayList<GPUImageFilter> mergedFilters;
     private int[] frameBuffers;
     private int[] frameBufferTextures;
 
@@ -59,10 +57,10 @@ public class GPUImageFilterGroup extends GPUImageFilter {
      *
      * @param filters the filters which represent this filter
      */
-    public GPUImageFilterGroup(List<GPUImageFilter> filters) {
+    public GPUImageFilterGroup(CopyOnWriteArrayList<GPUImageFilter> filters) {
         this.filters = filters;
         if (this.filters == null) {
-            this.filters = new ArrayList<>();
+            this.filters = new CopyOnWriteArrayList<>();
         } else {
             updateMergedFilters();
         }
@@ -235,7 +233,7 @@ public class GPUImageFilterGroup extends GPUImageFilter {
         }
 
         if (mergedFilters == null) {
-            mergedFilters = new ArrayList<>();
+            mergedFilters = new CopyOnWriteArrayList<>();
         } else {
             mergedFilters.clear();
         }

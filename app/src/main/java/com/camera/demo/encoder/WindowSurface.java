@@ -19,6 +19,7 @@ package com.camera.demo.encoder;
 import android.graphics.SurfaceTexture;
 import android.view.Surface;
 
+
 /**
  * Recordable EGL window surface.
  * <p>

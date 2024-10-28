@@ -204,7 +204,7 @@ public class GPUImageRenderer implements GLSurfaceView.Renderer, GLTextureView.R
      * @param height
      */
     public void onPreviewFrame(final byte[] data, final int width, final int height) {
-        XLogger.d("onPreviewFrame----."+width +" "+height);
+//        XLogger.d("onPreviewFrame----."+width +" "+height);
         if (glRgbBuffer == null) {
             glRgbBuffer = IntBuffer.allocate(width * height);
         }

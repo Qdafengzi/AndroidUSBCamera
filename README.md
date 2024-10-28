@@ -46,6 +46,13 @@ zoom 和sharpness不管用
 第三方库 lib1
     可以设置分辨率  但是callbackFrame 分辨率没改变
 
+    分辨率的切换 
+    最大 最小值
+    曝光 
+    对焦 
+    自动对焦
+    
+    
 
     
 

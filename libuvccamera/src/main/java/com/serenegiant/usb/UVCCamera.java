@@ -260,8 +260,7 @@ public class UVCCamera {
     public List<Size> getSupportedSizeList() {
         List<Size> list = new ArrayList<>();
         if (mSupportedSizeList != null) {
-            for (Size size :
-                    mSupportedSizeList) {
+            for (Size size : mSupportedSizeList) {
                 list.add(size.clone());
             }
         }
@@ -452,7 +451,7 @@ public class UVCCamera {
 
         if (mNativePtr != 0) {
             if (!checkSizeValid(size.width, size.height, size.type, size.fps)) {
-                throw new IllegalArgumentException("invalid preview size");
+                throw new IllegalArgumentException("invalid preview size w:"+ size.width +" h:" + size.height+" type"+size.type +" fps"+size.fps);
             }
 
             //set preview size

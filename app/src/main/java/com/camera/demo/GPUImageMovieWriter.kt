@@ -1,200 +1,186 @@
-package com.camera.demo;
+package com.camera.demo
 
+import android.opengl.EGL14
+import com.camera.demo.encoder.CameraXListener
+import com.camera.demo.encoder.EglCore
+import com.camera.demo.encoder.MediaEncoder
+import com.camera.demo.encoder.MediaMuxerWrapper
+import com.camera.demo.encoder.MediaVideoEncoder
+import com.camera.demo.encoder.RecordListener
+import com.camera.demo.encoder.WindowSurface
+import com.gemlightbox.core.utils.XLogger
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
+import java.nio.FloatBuffer
+import javax.microedition.khronos.egl.EGL10
+import javax.microedition.khronos.egl.EGLContext
+import javax.microedition.khronos.egl.EGLDisplay
+import javax.microedition.khronos.egl.EGLSurface
 
-import android.opengl.EGL14;
+class GPUImageMovieWriter(private val cameraXListener: CameraXListener) : GPUImageFilter() {
+    private var mMuxer: MediaMuxerWrapper? = null
+    private var mVideoEncoder: MediaVideoEncoder? = null
+    private var mCodecInput: WindowSurface? = null
 
-import com.camera.demo.encoder.EglCore;
-import com.camera.demo.encoder.MediaEncoder;
-import com.camera.demo.encoder.MediaMuxerWrapper;
-import com.camera.demo.encoder.MediaVideoEncoder;
-import com.camera.demo.encoder.RecordListener;
-import com.camera.demo.encoder.WindowSurface;
-import com.camera.utils.XLogger;
+    private var mEGLScreenSurface: EGLSurface? = null
+    private var mEGL: EGL10? = null
+    private var mEGLDisplay: EGLDisplay? = null
+    private var mEGLContext: EGLContext? = null
+    private var mEGLCore: EglCore? = null
 
-import java.nio.FloatBuffer;
+    private var mIsRecording = false
 
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLContext;
-import javax.microedition.khronos.egl.EGLDisplay;
-import javax.microedition.khronos.egl.EGLSurface;
+    private var frameRate = 30
 
-import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter;
+    var drawVideo: Boolean = false
 
-public class GPUImageMovieWriter extends GPUImageFilter {
-    private MediaMuxerWrapper mMuxer;
-    private MediaVideoEncoder mVideoEncoder;
-    private WindowSurface mCodecInput;
-
-    private EGLSurface mEGLScreenSurface;
-    private EGL10 mEGL;
-    private EGLDisplay mEGLDisplay;
-    private EGLContext mEGLContext;
-    private EglCore mEGLCore;
-
-    private boolean mIsRecording = false;
-
-    private int frameRate = 30;
-    public GPUImageErrorListener gpuImageErrorListener;
-
-    public boolean drawVideo = false;
-
-    public interface StartRecordListener {
-        void onRecordStart();
-
-        void onRecordError(Exception e);
+    fun setFrameRate(frameRate: Int) {
+        this.frameRate = frameRate
     }
 
-    public void setFrameRate(int frameRate) {
-        this.frameRate = frameRate;
+    override fun onInit() {
+        super.onInit()
+        mEGL = (EGLContext.getEGL() as EGL10)
+        mEGLDisplay = mEGL?.eglGetCurrentDisplay()
+        mEGLContext = mEGL?.eglGetCurrentContext()
+        mEGLScreenSurface = mEGL?.eglGetCurrentSurface(EGL10.EGL_DRAW)
     }
 
-    @Override
-    public void onInit() {
-        super.onInit();
-        mEGL = (EGL10) EGLContext.getEGL();
-        mEGLDisplay = mEGL.eglGetCurrentDisplay();
-        mEGLContext = mEGL.eglGetCurrentContext();
-        mEGLScreenSurface = mEGL.eglGetCurrentSurface(EGL10.EGL_DRAW);
-    }
-
-    @Override
-    public synchronized void onDraw(int textureId, FloatBuffer cubeBuffer, FloatBuffer textureBuffer) {
+    @Synchronized
+    override fun onDraw(textureId: Int, cubeBuffer: FloatBuffer, textureBuffer: FloatBuffer) {
         // Draw on screen surface
-        super.onDraw(textureId, cubeBuffer, textureBuffer);
+        super.onDraw(textureId, cubeBuffer, textureBuffer)
 
         if (mIsRecording && drawVideo) {
-            drawVideo = false;
+            drawVideo = false
             // create encoder surface
             if (mCodecInput == null) {
-                if (mVideoEncoder == null || mVideoEncoder.getSurface() == null) {
-                    return;
+                if (mVideoEncoder == null || mVideoEncoder!!.surface == null) {
+                    XLogger.e("mVideoEncoder == null")
+                    return
                 }
-                mEGLCore = new EglCore(EGL14.eglGetCurrentContext(), EglCore.FLAG_RECORDABLE);
-                mCodecInput = new WindowSurface(mEGLCore, mVideoEncoder.getSurface(), false);
+                mEGLCore = EglCore(EGL14.eglGetCurrentContext(), EglCore.FLAG_RECORDABLE)
+                mCodecInput = WindowSurface(mEGLCore, mVideoEncoder!!.surface, false)
             }
 
             // Draw on encoder surface
-            mCodecInput.makeCurrent();
-            super.onDraw(textureId, cubeBuffer, textureBuffer);
-            if (mCodecInput != null) {
-                mCodecInput.swapBuffers();
-            }
-            mVideoEncoder.frameAvailableSoon();
+            mCodecInput?.makeCurrent()
+            super.onDraw(textureId, cubeBuffer, textureBuffer)
+            mCodecInput?.swapBuffers()
+            mVideoEncoder?.frameAvailableSoon()
         }
 
         // Make screen surface be current surface
-        mEGL.eglMakeCurrent(mEGLDisplay, mEGLScreenSurface, mEGLScreenSurface, mEGLContext);
+        mEGL?.eglMakeCurrent(mEGLDisplay, mEGLScreenSurface, mEGLScreenSurface, mEGLContext)
+        val error = EGL14.eglGetError()
+        if (error != EGL14.EGL_SUCCESS) {
+            XLogger.e("EGL : eglError $error")
+        }
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        releaseEncodeSurface();
+    override fun onDestroy() {
+        super.onDestroy()
+//        releaseEncodeSurface()
     }
 
-    public synchronized void prepareRecording(final String outputPath, final int width, final int height) {
-        XLogger.d("录制-------prepareRecording ---"+width +"*"+height + "path:"+ outputPath);
-        runOnDraw(() -> {
+    @Synchronized
+    fun prepareRecording(
+        outputPath: String?,
+        width: Int,
+        height: Int,
+        prepareCallback: (success: Boolean) -> Unit
+    ) {
+        runOnDraw {
             if (mIsRecording) {
-                XLogger.d("video bug GePU write already in recording");
-                XLogger.e("录制-------正在进行");
-                return;
+                XLogger.d("video bug GPU write already in recording")
+                return@runOnDraw
             }
-
-            try {
-                mMuxer = new MediaMuxerWrapper(outputPath);
+//            try {
+                mMuxer = MediaMuxerWrapper(outputPath)
                 // for video capturing
-                mVideoEncoder = new MediaVideoEncoder(mMuxer, mMediaEncoderListener, width, height, frameRate);
-                mMuxer.prepare();
-                XLogger.d("录制-------->prepareRecording");
-            } catch (Exception e) {
-                XLogger.e("录制------>video bug error"+e.getMessage());
-                if (gpuImageErrorListener != null) {
-                    gpuImageErrorListener.onError();
-                }
-            }
-        });
+                mVideoEncoder = MediaVideoEncoder(mMuxer, mMediaEncoderListener, width, height, frameRate)
+                mMuxer?.prepare()
+                prepareCallback(true)
+                XLogger.d("video start record")
+//            } catch (e: Exception) {
+//                prepareCallback(false)
+//                XLogger.e("record video bug error" + e.message)
+//                cameraXListener.recordPrepareError(e.message ?: "")
+//            }
+        }
     }
 
-    public synchronized void stopRecording(final RecordListener recordListener) {
-        runOnDraw(() -> {
+    @Synchronized
+    fun stopRecording(recordListener: RecordListener?) {
+        runOnDraw {
             if (!mIsRecording) {
-                return;
+                XLogger.e("record have stopped return ")
+                return@runOnDraw
             }
-
             try {
-                mMuxer.stopRecording(recordListener);
-                mIsRecording = false;
-                releaseEncodeSurface();
-                XLogger.d("暂停了");
-            } catch (Exception e) {
-                XLogger.d("error:"+e.getMessage());
+                mMuxer?.stopRecording(recordListener)
+            } catch (e: Exception) {
+                XLogger.e("record error:" + e.message)
+                cameraXListener.stopError(e.message ?: "")
+            } finally {
+                mIsRecording = false
+                XLogger.d("record release encodeSurface1")
+                releaseEncodeSurface()
             }
-        });
+        }
     }
 
-    private void releaseEncodeSurface() {
+    private fun releaseEncodeSurface() {
+        XLogger.d("record releaseEncodeSurface")
         if (mEGLCore != null) {
-            mEGLCore.makeNothingCurrent();
-            mEGLCore.release();
-            mEGLCore = null;
+            mEGLCore!!.makeNothingCurrent()
+            mEGLCore!!.release()
+            mEGLCore = null
         }
 
         if (mCodecInput != null) {
-            mCodecInput.release();
-            mCodecInput = null;
+            mCodecInput!!.release()
+            mCodecInput = null
         }
         if (mVideoEncoder != null) {
-            mVideoEncoder = null;
+            mVideoEncoder = null
         }
         if (mMuxer != null) {
-            mMuxer = null;
+            mMuxer = null
         }
     }
 
     /**
      * callback methods from encoder
      */
-    private final MediaEncoder.MediaEncoderListener mMediaEncoderListener = new MediaEncoder.MediaEncoderListener() {
-        @Override
-        public void onPrepared(final MediaEncoder encoder) {
-            XLogger.d("onPrepared..."+encoder.getOutputPath());
+    private val mMediaEncoderListener: MediaEncoder.MediaEncoderListener = object : MediaEncoder.MediaEncoderListener {
+        override fun onPrepared(encoder: MediaEncoder) {
+            XLogger.d("onPrepared...")
         }
 
-        @Override
-        public void onStopped(final MediaEncoder encoder) {
-            XLogger.d("onStopped..."+encoder.getOutputPath());
+        override fun onStopped(encoder: MediaEncoder) {
+            XLogger.d("onStopped...")
         }
 
-        @Override
-        public void onMuxerStopped() {
-            XLogger.d("onMuxerStopped...");
+        override fun onMuxerStopped() {
+            XLogger.d("onMuxerStopped...")
         }
-    };
-
-    public synchronized void startRecording(StartRecordListener startRecordListener) {
-        runOnDraw(() -> {
-            try {
-                if (mVideoEncoder != null) {
-                    mMuxer.prepare();
-                    mMuxer.startRecording();
-
-                    mIsRecording = true;
-
-                    if (startRecordListener != null) {
-                        startRecordListener.onRecordStart();
-                    }
-                }
-            } catch (Exception e) {
-                XLogger.e("video bug location>>>"+e.getMessage());
-                if (startRecordListener != null) {
-                    startRecordListener.onRecordError(e);
-                }
-            }
-        });
     }
 
-    public interface GPUImageErrorListener {
-        void onError();
+    @Synchronized
+    fun startRecording() {
+        runOnDraw {
+            try {
+                if (mVideoEncoder != null) {
+//                    mMuxer?.prepare()
+                    mMuxer?.startRecording()
+                    mIsRecording = true
+                    cameraXListener.recordStart()
+                }
+            } catch (e: Exception) {
+                XLogger.e("video bug location>>>" + e.message)
+                cameraXListener.recordError(e.message ?: "")
+                mIsRecording = false
+            }
+        }
     }
 }

@@ -1,11 +1,11 @@
 package com.camera.demo
 
-import android.app.appsearch.AppSearchSchema.PropertyConfig
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.SurfaceTexture
 import android.graphics.YuvImage
 import android.hardware.usb.UsbDevice
 import android.media.MediaExtractor
@@ -16,19 +16,20 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.view.LayoutInflater
-import android.view.SurfaceHolder
+import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -37,8 +38,11 @@ import androidx.compose.material.AlertDialog
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,10 +67,12 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.camera.demo.databinding.FragmentDemo02Binding
+import com.camera.demo.encoder.CameraXListener
+import com.camera.demo.encoder.RecordListener
 import com.camera.utils.XLogger
 import com.herohan.uvcapp.CameraHelper
-import com.herohan.uvcapp.CameraPreviewConfig
 import com.herohan.uvcapp.ICameraHelper
+import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.Size
 import com.serenegiant.usb.UVCCamera
 import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
@@ -93,8 +99,8 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.OutputStream
-import java.nio.ByteBuffer
 import java.text.DecimalFormat
+import java.util.concurrent.CopyOnWriteArrayList
 
 
 data class UvcCameraUIState(
@@ -138,6 +144,7 @@ data class UvcCameraUIState(
 data class CameraOtherState(
     val device: UsbDevice? = null,
     val showDeviceInfoDialog: Boolean = false,
+    val supportedSizeList: List<Size> = listOf(),
 )
 
 enum class ExposureModel(val value: Int) {
@@ -180,6 +187,12 @@ class UvcCameraViewModel : ViewModel() {
             it.copy(device = device)
         }
     }
+
+    fun updateSupportSize(supportedSizeList: List<Size>) {
+        _cameraOtherUIState.update {
+            it.copy(supportedSizeList = supportedSizeList)
+        }
+    }
 }
 
 open class UvcCameraFragment : Fragment() {
@@ -198,7 +211,30 @@ open class UvcCameraFragment : Fragment() {
     private val mViewModel = UvcCameraViewModel()
 
     private val mGpuImageMovieWriter by lazy {
-        GPUImageMovieWriter()
+        GPUImageMovieWriter(object :CameraXListener{
+            override fun click() {
+
+            }
+
+            override fun recordStart() {
+            }
+
+            override fun recordStop() {
+            }
+
+            override fun recordPrepareError(msg: String) {
+            }
+
+            override fun recordError(msg: String) {
+            }
+
+            override fun stopError(msg: String) {
+            }
+
+            override fun captureError() {
+            }
+
+        })
     }
     private val mGPUImageWhiteBalanceFilter by lazy {
         GPUImageWhiteBalanceFilter()
@@ -251,21 +287,46 @@ open class UvcCameraFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        mBinding.aspectView.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT)
 
-        mBinding.surfaceView.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT)
-
-        mBinding.surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) {
-                mCameraHelper?.addSurface(holder.surface, false)
+        mBinding.aspectView.surfaceTextureListener = object :TextureView.SurfaceTextureListener{
+            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                mCameraHelper?.addSurface(surface, false)
             }
 
-            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+                XLogger.d("尺寸改变:${width}*${height}")
             }
 
-            override fun surfaceDestroyed(holder: SurfaceHolder) {
-                mCameraHelper?.removeSurface(holder.surface)
+            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                mCameraHelper?.removeSurface(surface)
+                return true
             }
-        })
+
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+//                XLogger.d("返回数据")
+                lifecycleScope.launch(Dispatchers.Main) {
+                    val bitmap = mBinding.aspectView.bitmap
+                    bitmap?.let {
+                        mBinding.gpuImageView.setImage(bitmap)
+                    }
+                }
+            }
+        }
+
+//        mBinding.surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+//            override fun surfaceCreated(holder: SurfaceHolder) {
+//                mCameraHelper?.addSurface(holder.surface, false)
+//            }
+//
+//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+//                XLogger.d("尺寸改变:${width}*${height}")
+//            }
+//
+//            override fun surfaceDestroyed(holder: SurfaceHolder) {
+//                mCameraHelper?.removeSurface(holder.surface)
+//            }
+//        })
         setFilter()
         setContent()
     }
@@ -300,102 +361,124 @@ open class UvcCameraFragment : Fragment() {
         mCameraHelper?.selectDevice(device)
     }
 
+    private val mFrameCallback = IFrameCallback { frame ->
+        if (frame != null && mPreviewSize != null) {
+            if (mCustomFPS != null) {
+                //Refresh FPS
+                mCustomFPS?.doFrame()
+            }
+
+            //
+            val nv21 = ByteArray(frame.remaining())
+            frame[nv21, 0, nv21.size]
+            //
+//                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
+            logWithInterval("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
+            val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
+            lifecycleScope.launch(Dispatchers.Main) {
+                mBinding.gpuImageView.setImage(bitmap)
+            }
+        }
+    }
+
+    private fun convertRGBXToBitmap(rgbxData: ByteArray, width: Int, height: Int): Bitmap {
+        // 每个像素四个字节：RGBX
+        val pixels = IntArray(width * height)
+
+        for (i in pixels.indices) {
+            val r = rgbxData[i * 4].toInt() and 0xFF // 红色通道
+            val g = rgbxData[i * 4 + 1].toInt() and 0xFF // 绿色通道
+            val b = rgbxData[i * 4 + 2].toInt() and 0xFF // 蓝色通道
+
+            // int x = rgbxData[i * 4 + 3] & 0xFF; // 未使用的字节
+
+            // 构建 ARGB 颜色，A（透明度）设为 255（不透明）
+            pixels[i] = 0xFF shl 24 or (r shl 16) or (g shl 8) or b
+        }
+
+        // 创建一个 Bitmap 对象
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+
+        return bitmap
+    }
+
+    var mPreviewSize: Size? = null
+
     private val mStateListener: ICameraHelper.StateCallback = object : ICameraHelper.StateCallback {
         override fun onAttach(device: UsbDevice) {
+            XLogger.d("uvc camera onAttach")
             selectDevice(device)
         }
 
         override fun onDeviceOpen(device: UsbDevice, isFirstOpen: Boolean) {
+            XLogger.d("uvc camera onDeviceOpen")
             mCameraHelper?.openCamera()
             mViewModel.updateDeviceInfo(device)
         }
 
         override fun onCameraOpen(device: UsbDevice) {
-            mCameraHelper?.supportedSizeList?.forEach {
-            }
-//            mCameraHelper?.previewSize = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
-
-            mCameraHelper?.startPreview()
-
-            mCameraHelper?.uvcControl?.apply {
-                focusAuto = false
-            }
-
-            val size = mCameraHelper?.previewSize
-            if (size != null) {
-                val width = size.width
-                val height = size.height
-                //auto aspect ratio
-                mBinding.surfaceView.setAspectRatio(width,height)
-            }
-
-            mCameraHelper?.addSurface(mBinding.surfaceView.holder.surface, false)
-
-            mCameraHelper?.setFrameCallback({ frame: ByteBuffer ->
-                if (mCustomFPS != null) {
-                    //Refresh FPS
-                    mCustomFPS?.doFrame()
+            XLogger.d("uvc camera onCameraOpen")
+            mCameraHelper?.apply {
+                this.supportedFormatList.forEach {
+                    XLogger.d("支持的格式:${it.type} ${it.frameDescriptors}")
                 }
 
-                //
-                val nv21 = ByteArray(frame.remaining())
-                frame[nv21, 0, nv21.size]
-                //
-//                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
-                logWithInterval("画面的尺寸：${size?.width}*${size?.height}")
-                val bitmap = convertRGBXToBitmap(nv21, size!!.width, size.height)
-                lifecycleScope.launch(Dispatchers.Main) {
-                    mBinding.imageView.setImage(bitmap)
+                val newSupportSizeList = mutableListOf<Size>()
+                supportedSizeList.forEach {size->
+                    if (size.fps >= 15) {
+                        val count = newSupportSizeList.count {
+                            it.width == size.width && it.height == size.height
+                        }
+                        if (count == 0) {
+                            newSupportSizeList.add(size)
+                            XLogger.d("支持的分辨率:${size.width} * ${size.height} ${size.fps} ${size.fpsList}")
+                        }
+                    }
                 }
-            }, UVCCamera.PIXEL_FORMAT_RGBX)
+                mViewModel.updateSupportSize(newSupportSizeList)
 
-            initFPS()
-        }
+                startPreview()
+
+                uvcControl.apply {
+                    focusAuto = false
+                }
+
+                this@UvcCameraFragment.mPreviewSize = previewSize
+                if (previewSize != null) {
+                    val width = previewSize!!.width
+                    val height = previewSize!!.height
+                    //auto aspect ratio
+                    mBinding.aspectView.setAspectRatio(width, height)
+                }
 
 
+                mCameraHelper?.addSurface(mBinding.aspectView.surfaceTexture, false)
+//                mCameraHelper?.setFrameCallback(mFrameCallback, UVCCamera.PIXEL_FORMAT_RGBX)
 
-
-        fun convertRGBXToBitmap(rgbxData: ByteArray, width: Int, height: Int): Bitmap {
-            // 每个像素四个字节：RGBX
-            val pixels = IntArray(width * height)
-
-            for (i in pixels.indices) {
-                val r = rgbxData[i * 4].toInt() and 0xFF // 红色通道
-                val g = rgbxData[i * 4 + 1].toInt() and 0xFF // 绿色通道
-                val b = rgbxData[i * 4 + 2].toInt() and 0xFF // 蓝色通道
-
-                // int x = rgbxData[i * 4 + 3] & 0xFF; // 未使用的字节
-
-                // 构建 ARGB 颜色，A（透明度）设为 255（不透明）
-                pixels[i] = 0xFF shl 24 or (r shl 16) or (g shl 8) or b
+                initFPS()
             }
-
-            // 创建一个 Bitmap 对象
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-
-            return bitmap
         }
-
 
         override fun onCameraClose(device: UsbDevice) {
+            XLogger.d("uvc camera onCameraClose")
             if (mCameraHelper != null) {
-                mCameraHelper!!.removeSurface(mBinding.surfaceView.holder.surface)
+                mCameraHelper!!.removeSurface(mBinding.aspectView.surfaceTexture)
             }
 
             clearFPS()
         }
 
         override fun onDeviceClose(device: UsbDevice) {
-
+            XLogger.d("uvc camera onDeviceClose")
         }
 
         override fun onDetach(device: UsbDevice) {
-
+            XLogger.d("uvc camera onDetach")
         }
 
         override fun onCancel(device: UsbDevice) {
-
+            XLogger.d("uvc camera onCancel")
         }
     }
 
@@ -486,9 +569,9 @@ open class UvcCameraFragment : Fragment() {
     }
 
 
-    fun setFilter(haveFilter:Boolean = true) {
-        mBinding.imageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
-        val gpuImageFilters = mutableListOf<GPUImageFilter>()
+    fun setFilter(haveFilter: Boolean = true) {
+        mBinding.gpuImageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
+        val gpuImageFilters = CopyOnWriteArrayList<GPUImageFilter>()
         gpuImageFilters.add(mGpuImageMovieWriter)
         if (haveFilter) {
             gpuImageFilters.add(mGpuImageLevelsFilter)
@@ -502,16 +585,12 @@ open class UvcCameraFragment : Fragment() {
             gpuImageFilters.add(mGPUImageHueFilter)
         }
 
-        mBinding.imageView.filter = GPUImageFilterGroup(gpuImageFilters)
-        mBinding.imageView.setDrawVideoListener {
+        mBinding.gpuImageView.filter = GPUImageFilterGroup(gpuImageFilters)
+        mBinding.gpuImageView.setDrawVideoListener {
             mGpuImageMovieWriter.drawVideo = true
         }
         mGpuImageMovieWriter.setFrameRate(30)
-
-        mGpuImageMovieWriter.gpuImageErrorListener =
-            GPUImageMovieWriter.GPUImageErrorListener { XLogger.d("渲染错误：") }
-
-        mBinding.imageView.requestRender()
+        mBinding.gpuImageView.requestRender()
     }
 
     private fun setContent() {
@@ -533,27 +612,49 @@ open class UvcCameraFragment : Fragment() {
                     AutoFocus()
                     HideFilterView()
                 }
+                ChangeResolutionView()
 
-                TextButton(onClick = {
-                    val size = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
-
-                    if (mCameraHelper != null && mCameraHelper!!.isCameraOpened) {
-                        mCameraHelper!!.stopPreview()
-                        mCameraHelper!!.previewSize = size
-                        mCameraHelper!!.startPreview()
-                        // Update the preview size
-//                        mPreviewWidth = size.width
-//                        mPreviewHeight = size.height
-
-                        // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
-                        mBinding.surfaceView.setAspectRatio(size.width,size.height)
-                    }
-
-                }) {
-                    Text("修改分辨率")
-                }
                 AspectRatioView()
                 SliderContent()
+            }
+        }
+    }
+
+    @Composable
+    fun ChangeResolutionView() {
+        val cameraOtherUIState = mViewModel.cameraOtherUIState.collectAsState().value
+        val supportedSizeList = cameraOtherUIState.supportedSizeList
+        var show  by remember { mutableStateOf(false) }
+        Box() {
+            TextButton(onClick = {
+                show = true
+            }) {
+                Text("分辨率")
+            }
+            DropdownMenu(expanded = show, onDismissRequest = {
+                show = false
+            }, modifier = Modifier.width(100.dp)) {
+                supportedSizeList.forEach {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "${it.width}*${it.height}",
+                                modifier = Modifier.padding(start = 10.dp)
+                            )
+                        },
+                        onClick = {
+                            show = false
+                            XLogger.d("改变分辨率 ${it.width}*${it.height}")
+                            val size = Size(UVC_VS_FRAME_MJPEG, it.width, it.height, it.fps, it.fpsList)
+                            mCameraHelper?.apply {
+                                stopPreview()
+                                previewSize = size
+                                startPreview()
+                                mBinding.aspectView.setAspectRatio(size.width, size.height)
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -610,9 +711,10 @@ open class UvcCameraFragment : Fragment() {
 
     @Composable
     fun SliderContent() {
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 2.dp, end = 2.dp, top = 4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 2.dp, end = 2.dp, top = 4.dp)
         ) {
             SliderByUvcContent(
                 modifier = Modifier
@@ -630,16 +732,15 @@ open class UvcCameraFragment : Fragment() {
     }
 
     @Composable
-    fun SliderByUvcContent(modifier: Modifier= Modifier) {
-      Column(modifier = modifier) {
-          ZoomAndFocus()
-          BrightnessAndExposure()
-          SharpnessAndSaturation()
-          GammaAndContrast()
-          HueAnd()
-      }
+    fun SliderByUvcContent(modifier: Modifier = Modifier) {
+        Column(modifier = modifier) {
+            ZoomAndFocus()
+            BrightnessAndExposure()
+            SharpnessAndSaturation()
+            GammaAndContrast()
+            HueAnd()
+        }
     }
-
 
 
     @Composable
@@ -648,7 +749,7 @@ open class UvcCameraFragment : Fragment() {
         val zoomSliderValue = remember { mutableFloatStateOf(1f) }
         val focusValue = remember { mutableFloatStateOf(1f) }
 
-        LaunchedEffect(cameraUIState.zoomMin,cameraUIState.focusMin) {
+        LaunchedEffect(cameraUIState.zoomMin, cameraUIState.focusMin) {
             cameraUIState.apply {
                 if ((zoomMax - zoomMin) != 0f) {
                     XLogger.d("zoomMax:${zoomMax} zoomMin:${zoomMin}")
@@ -693,14 +794,16 @@ open class UvcCameraFragment : Fragment() {
         val cameraUIState = mViewModel.cameraUIState.collectAsState().value
         val brightnessSliderValue = remember { mutableFloatStateOf(1f) }
         val exposureValue = remember { mutableFloatStateOf(1f) }
-        LaunchedEffect(cameraUIState.brightnessMin,cameraUIState.exposureMin) {
+        LaunchedEffect(cameraUIState.brightnessMin, cameraUIState.exposureMin) {
             cameraUIState.apply {
                 if ((brightnessMax - brightnessMin) != 0f) {
-                    brightnessSliderValue.floatValue = 100 * (brightness - brightnessMin) / (brightnessMax - brightnessMin)
+                    brightnessSliderValue.floatValue =
+                        100 * (brightness - brightnessMin) / (brightnessMax - brightnessMin)
                 }
 
                 if ((exposureMax - exposureMin) != 0f) {
-                    exposureValue.floatValue = 100 * (exposure - exposureMin) / (exposureMax - exposureMin)
+                    exposureValue.floatValue =
+                        100 * (exposure - exposureMin) / (exposureMax - exposureMin)
                 }
             }
         }
@@ -725,7 +828,7 @@ open class UvcCameraFragment : Fragment() {
                 XLogger.d("ae min:${cameraUIState.exposureMin} max${cameraUIState.exposureMax}")
 
                 mCameraHelper?.uvcControl?.apply {
-                    autoExposureMode =ExposureModel.MANUAL_MODEL.value
+                    autoExposureMode = ExposureModel.MANUAL_MODEL.value
                     exposureTimeAbsolute = progress.toInt()
                 }
             }
@@ -738,14 +841,15 @@ open class UvcCameraFragment : Fragment() {
         val gammaSliderValue = remember { mutableFloatStateOf(1f) }
         val contrastSliderValue = remember { mutableFloatStateOf(1f) }
 
-        LaunchedEffect(cameraUIState.gammaMin,cameraUIState.contrastMin) {
+        LaunchedEffect(cameraUIState.gammaMin, cameraUIState.contrastMin) {
             cameraUIState.apply {
                 if ((gammaMax - gammaMin) != 0f) {
                     gammaSliderValue.floatValue = 100 * (gamma - gammaMin) / (gammaMax - gammaMin)
                 }
 
                 if ((contrastMax - contrastMin) != 0f) {
-                    contrastSliderValue.floatValue = 100 * (contrast - contrastMin) / (contrastMax - contrastMin)
+                    contrastSliderValue.floatValue =
+                        100 * (contrast - contrastMin) / (contrastMax - contrastMin)
                 }
             }
         }
@@ -782,14 +886,16 @@ open class UvcCameraFragment : Fragment() {
         val sharpnessSliderValue = remember { mutableFloatStateOf(1f) }
         val saturationSliderValue = remember { mutableFloatStateOf(1f) }
 
-        LaunchedEffect(cameraUIState.sharpnessMin,cameraUIState.saturationMin) {
+        LaunchedEffect(cameraUIState.sharpnessMin, cameraUIState.saturationMin) {
             cameraUIState.apply {
                 if ((sharpnessMax - sharpnessMin) != 0f) {
-                    sharpnessSliderValue.floatValue = 100 * (sharpness - sharpnessMin) / (sharpnessMax - sharpnessMin)
+                    sharpnessSliderValue.floatValue =
+                        100 * (sharpness - sharpnessMin) / (sharpnessMax - sharpnessMin)
                 }
 
                 if ((saturationMax - saturationMin) != 0f) {
-                    saturationSliderValue.floatValue = 100 * (saturation - saturationMin) / (saturationMax - saturationMin)
+                    saturationSliderValue.floatValue =
+                        100 * (saturation - saturationMin) / (saturationMax - saturationMin)
                 }
             }
         }
@@ -822,10 +928,8 @@ open class UvcCameraFragment : Fragment() {
     }
 
 
-
-
     @Composable
-    fun SliderByFilterContent(modifier: Modifier= Modifier) {
+    fun SliderByFilterContent(modifier: Modifier = Modifier) {
         Column(modifier = modifier) {
             val temperatureSliderValue = remember { mutableFloatStateOf(5000f) }
             SliderView(
@@ -953,9 +1057,11 @@ open class UvcCameraFragment : Fragment() {
         aspectList.add(AspectRatioData(4, 5))
         aspectList.add(AspectRatioData(4, 3))
         aspectList.add(AspectRatioData(2, 1))
-        LazyRow(modifier = Modifier
-            .fillMaxWidth()
-            .background(color = Color(0xFF3F51B5))) {
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(color = Color(0xFF3F51B5))
+        ) {
             aspectList.forEach {
                 item {
                     TextButton(onClick = {
@@ -963,11 +1069,11 @@ open class UvcCameraFragment : Fragment() {
                         mCurrentAspectHeightP = it.heightP
                         scope.launch(Dispatchers.IO) {
                             withContext(Dispatchers.Main) {
-                                mBinding.imageView.setRatio(it.widthP.toFloat() / it.heightP)
+                                mBinding.gpuImageView.setRatio(it.widthP.toFloat() / it.heightP)
                             }
                             delay(300)
                             withContext(Dispatchers.Main) {
-                                mBinding.imageView.setRatio(it.widthP.toFloat() / it.heightP)
+                                mBinding.gpuImageView.setRatio(it.widthP.toFloat() / it.heightP)
                             }
                         }
                     }) {
@@ -1041,7 +1147,7 @@ open class UvcCameraFragment : Fragment() {
                     mGPUImageExposureFilter.setExposure(0f)
                     mGPUImageSaturationFilter.setSaturation(1f)
                     mGPUImageBrightnessFilter.setBrightness(0f)
-                    mGpuImageLevelsFilter.setMin(0f,1f,1f)
+                    mGpuImageLevelsFilter.setMin(0f, 1f, 1f)
                     mGPUImageWhiteBalanceFilter.setTint(50f)
                     mGPUImageWhiteBalanceFilter.setTemperature(5000f)
                 }
@@ -1113,7 +1219,7 @@ open class UvcCameraFragment : Fragment() {
 
             Button(
                 onClick = {
-                    val bit = mBinding.imageView.capture()
+                    val bit = mBinding.gpuImageView.capture()
                     bitmap = bit
                 }) {
                 Text("拍照")
@@ -1166,31 +1272,21 @@ open class UvcCameraFragment : Fragment() {
                     } catch (e: Exception) {
                         XLogger.d("录制失败: ${e.message}")
                     }
+
+
+                    setFilter()
                     mGpuImageMovieWriter.apply {
                         drawVideo = true
                         prepareRecording(
                             videoFile.absolutePath,
-                            mRenderWidth,
-                            mRenderHeight,
-                        )
-                        delay(200)
-                        startRecording(object : GPUImageMovieWriter.StartRecordListener {
-                            override fun onRecordStart() {
-                                XLogger.d("录制-------->onRecordStart")
+                            mBinding.gpuImageView.measuredWidth,
+                            mBinding.gpuImageView.measuredHeight,
+                        ){ok->
+                            if (ok){
+                                startRecording()
                             }
 
-                            override fun onRecordError(e: Exception?) {
-                                scope.launch {
-                                    withContext(Dispatchers.Main) {
-                                        mGpuImageMovieWriter.stopRecording {
-                                           Toast.makeText(requireContext(),"录制错误",Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                }
-
-                                XLogger.d("录制-------->onRecordError:${e?.message}")
-                            }
-                        })
+                        }
                     }
                 }
             }
@@ -1202,12 +1298,15 @@ open class UvcCameraFragment : Fragment() {
                 timerActive.value = false
                 scope.launch {
                     withContext(Dispatchers.IO) {
-                        mGpuImageMovieWriter.stopRecording {
-                            XLogger.d("录制已停止")
-                            val videoFile = File(requireContext().cacheDir, "record.mp4")
-                            saveVideoToGallery(requireContext(), videoFile, videoFile.name)
-                            XLogger.d("录制的视频:${videoFile.absolutePath}")
-                        }
+                        mGpuImageMovieWriter.stopRecording(object :RecordListener{
+                            override fun onStop() {
+                                XLogger.d("录制已停止")
+                                val videoFile = File(requireContext().cacheDir, "record.mp4")
+                                saveVideoToGallery(requireContext(), videoFile, videoFile.name)
+                                XLogger.d("录制的视频:${videoFile.absolutePath}")
+                            }
+
+                        })
                     }
                 }
             }
@@ -1265,7 +1364,10 @@ open class UvcCameraFragment : Fragment() {
             put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
         }
 
-        val uri: Uri? = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        val uri: Uri? = context.contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        )
         if (uri != null) {
             var outputStream: OutputStream? = null
             try {
@@ -1287,7 +1389,10 @@ open class UvcCameraFragment : Fragment() {
             put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
         }
 
-        val uri: Uri? = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+        val uri: Uri? = context.contentResolver.insert(
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        )
         if (uri != null) {
             var outputStream: OutputStream? = null
             var inputStream: FileInputStream? = null

@@ -30,8 +30,7 @@ import android.opengl.EGLContext;
 import android.util.Log;
 import android.view.Surface;
 
-
-import com.camera.utils.XLogger;
+import com.gemlightbox.core.utils.XLogger;
 
 import java.io.IOException;
 
@@ -214,7 +213,7 @@ public class MediaVideoEncoder extends MediaEncoder {
         int colorFormat;
         for (int i = 0; i < caps.colorFormats.length; i++) {
             colorFormat = caps.colorFormats[i];
-            if (isRecognizedViewoFormat(colorFormat)) {
+            if (isRecognizedViewFormat(colorFormat)) {
                 if (result == 0)
                     result = colorFormat;
                 break;
@@ -240,7 +239,7 @@ public class MediaVideoEncoder extends MediaEncoder {
         };
     }
 
-    private boolean isRecognizedViewoFormat(int colorFormat) {
+    private boolean isRecognizedViewFormat(int colorFormat) {
         if (DEBUG) Log.i(TAG, "isRecognizedViewoFormat:colorFormat=" + colorFormat);
         final int n = recognizedFormats != null ? recognizedFormats.length : 0;
         for (int i = 0; i < n; i++) {

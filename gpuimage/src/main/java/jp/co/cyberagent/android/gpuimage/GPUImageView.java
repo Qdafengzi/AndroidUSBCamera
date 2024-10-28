@@ -93,6 +93,10 @@ public class GPUImageView extends FrameLayout {
         addView(surfaceView);
     }
 
+    public View getTextureView(){
+        return surfaceView;
+    }
+
     public View getSurfaceView() {
         return surfaceView;
     }
@@ -487,7 +491,7 @@ public class GPUImageView extends FrameLayout {
         }
     }
 
-    private class GPUImageGLTextureView extends GLTextureView {
+    public class GPUImageGLTextureView extends GLTextureView {
         public GPUImageGLTextureView(Context context) {
             super(context);
         }
