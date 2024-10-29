@@ -39,4 +39,18 @@ class UvcCameraViewModel : ViewModel() {
             it.copy(supportedSizeList = supportedSizeList)
         }
     }
+
+    fun resetUvcFilter() {
+        _cameraUIState.update {
+            it.copy(
+                gamma = 1.0f,
+                hue = 0f,
+                contrast = 1f,
+                sharpness = 0f,
+                exposure = 0f,
+                saturation = 1f,
+                brightness = 0f,
+            )
+        }
+    }
 }

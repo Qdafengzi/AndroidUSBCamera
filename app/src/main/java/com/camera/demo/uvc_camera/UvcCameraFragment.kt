@@ -2,6 +2,7 @@ package com.camera.demo.uvc_camera
 
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
@@ -12,6 +13,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
@@ -64,17 +66,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import com.camera.demo.CustomFPS
 import com.camera.demo.GPUImageMovieWriter
 import com.camera.demo.NV21ToBitmap
 import com.camera.demo.SliderView
+import com.camera.demo.Utils
 import com.camera.demo.databinding.FragmentDemo02Binding
 import com.camera.demo.encoder.CameraXListener
 import com.camera.demo.encoder.RecordListener
 import com.camera.demo.uvc_data.AspectRatioData
-import com.camera.demo.uvc_data.CameraOtherState
 import com.camera.demo.uvc_data.ExposureModel
 import com.camera.demo.uvc_data.UvcCameraUIState
 import com.camera.utils.XLogger
@@ -82,9 +83,9 @@ import com.herohan.uvcapp.CameraHelper
 import com.herohan.uvcapp.ICameraHelper
 import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.Size
-import com.serenegiant.usb.UVCCamera
 import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
 import jp.co.cyberagent.android.gpuimage.GPUImageView
+import jp.co.cyberagent.android.gpuimage.filter.GPUGrayWorldBalanceFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageContrastFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageExposureFilter
@@ -98,14 +99,12 @@ import jp.co.cyberagent.android.gpuimage.filter.GPUImageSharpenFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageWhiteBalanceFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.io.OutputStream
 import java.text.DecimalFormat
 import java.util.concurrent.CopyOnWriteArrayList
@@ -187,6 +186,10 @@ open class UvcCameraFragment : Fragment() {
         GPUImageHueFilter()
     }
 
+    private val mGPUGrayWorldFilter by lazy {
+        GPUGrayWorldBalanceFilter()
+    }
+
     private val mNV21ToBitmap by lazy {
         NV21ToBitmap(requireContext())
     }
@@ -266,6 +269,7 @@ open class UvcCameraFragment : Fragment() {
         setFilter()
         setContent()
     }
+
     protected var size = 1080
 
     fun setViewRatio(ratioWidth: Int, ratioHeight: Int) {
@@ -337,36 +341,36 @@ open class UvcCameraFragment : Fragment() {
         mCameraHelper?.selectDevice(device)
     }
 
-    private val mFrameCallback = IFrameCallback { frame ->
-        if (frame != null && mPreviewSize != null) {
-            if (mCustomFPS != null) {
-                //Refresh FPS
-                mCustomFPS?.doFrame()
-            }
-
-            //
-            val nv21 = ByteArray(frame.remaining())
-            frame[nv21, 0, nv21.size]
-            //
-//                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
-            XLogger.d("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
-            val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
-
-            if (!previewConfigured && bitmap != null) {
-                size = if (bitmap.width > 2160) bitmap.width else 2160
-                XLogger.d("size 大小:${size} ${bitmap.width}* ${bitmap.height}")
-                previewConfigured = true
-                setViewRatio(
-                    mCurrentAspectWithP,
-                    mCurrentAspectHeightP
-                )
-            }
-
-            lifecycleScope.launch(Dispatchers.Main) {
-                mBinding.gpuImageView.setImage(bitmap)
-            }
-        }
-    }
+//    private val mFrameCallback = IFrameCallback { frame ->
+//        if (frame != null && mPreviewSize != null) {
+//            if (mCustomFPS != null) {
+//                //Refresh FPS
+//                mCustomFPS?.doFrame()
+//            }
+//
+//            //
+//            val nv21 = ByteArray(frame.remaining())
+//            frame[nv21, 0, nv21.size]
+//            //
+////                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
+//            XLogger.d("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
+//            val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
+//
+//            if (!previewConfigured && bitmap != null) {
+//                size = if (bitmap.width > 2160) bitmap.width else 2160
+//                XLogger.d("size 大小:${size} ${bitmap.width}* ${bitmap.height}")
+//                previewConfigured = true
+//                setViewRatio(
+//                    mCurrentAspectWithP,
+//                    mCurrentAspectHeightP
+//                )
+//            }
+//
+//            lifecycleScope.launch(Dispatchers.Main) {
+//                mBinding.gpuImageView.setImage(bitmap)
+//            }
+//        }
+//    }
 
     private fun convertRGBXToBitmap(rgbxData: ByteArray, width: Int, height: Int): Bitmap {
         // 每个像素四个字节：RGBX
@@ -593,7 +597,7 @@ open class UvcCameraFragment : Fragment() {
     }
 
 
-    fun setFilter(haveFilter: Boolean = true) {
+    private fun setFilter(haveFilter: Boolean = true) {
         mBinding.gpuImageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
         val gpuImageFilters = CopyOnWriteArrayList<GPUImageFilter>()
         gpuImageFilters.add(mGpuImageMovieWriter)
@@ -607,6 +611,8 @@ open class UvcCameraFragment : Fragment() {
             gpuImageFilters.add(mGPUImageExposureFilter)
             gpuImageFilters.add(mGPUImageContrastFilter)
             gpuImageFilters.add(mGPUImageHueFilter)
+            gpuImageFilters.add(mGPUGrayWorldFilter)
+//            gpuImageFilters.add(mGPUPerfectReflectorBalanceFilter)
         }
 
         mBinding.gpuImageView.apply {
@@ -648,14 +654,34 @@ open class UvcCameraFragment : Fragment() {
 
     @Composable
     fun ChangeResolutionView() {
+        val scope = rememberCoroutineScope()
         val cameraOtherUIState = mViewModel.cameraOtherUIState.collectAsState().value
         val supportedSizeList = cameraOtherUIState.supportedSizeList
         var show  by remember { mutableStateOf(false) }
-        Box() {
-            TextButton(onClick = {
-                show = true
-            }) {
-                Text("分辨率")
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth()){
+                TextButton(
+                    onClick = {
+                        show = true
+                    }) {
+                    Text("分辨率")
+                }
+
+                TextButton(onClick = {
+                   scope.launch(Dispatchers.IO) {
+                       val bitmap = mBinding.aspectView.bitmap
+                       bitmap?.apply {
+                           val array = Utils.calculateAverageColor(bitmap)
+                           withContext(Dispatchers.Main) {
+                               XLogger.d("Grayscale Algorithm")
+                               mGPUGrayWorldFilter.setGrayWorldFactors(array[0], array[1], array[2])
+                               mBinding.gpuImageView.requestRender()
+                           }
+                       }
+                   }
+                }) {
+                    Text("GrayWorld")
+                }
             }
             DropdownMenu(expanded = show, onDismissRequest = {
                 show = false
@@ -1161,6 +1187,7 @@ open class UvcCameraFragment : Fragment() {
                     resetFocusAbsolute()
                     resetGamma()
                     resetHue()
+                    mViewModel.resetUvcFilter()
                     mCameraHelper?.uvcControl?.focusAuto = false
 
                     mGPUImageGammaFilter.setGamma(1f)
@@ -1171,8 +1198,12 @@ open class UvcCameraFragment : Fragment() {
                     mGPUImageSaturationFilter.setSaturation(1f)
                     mGPUImageBrightnessFilter.setBrightness(0f)
                     mGpuImageLevelsFilter.setMin(0f, 1f, 1f)
-                    mGPUImageWhiteBalanceFilter.setTint(50f)
-                    mGPUImageWhiteBalanceFilter.setTemperature(5000f)
+                    mGPUGrayWorldFilter.setGrayWorldFactors(1.0f,1.0f,1.0f)
+                    previewConfigured = false
+
+                    //todo：重新添加白平衡的滤镜，直接设置值会有异常颜色
+//                    mGPUImageWhiteBalanceFilter.setTemperature(5000f)
+//                    mGPUImageWhiteBalanceFilter.setTint(50f)
                 }
             }
         }) {
@@ -1235,15 +1266,17 @@ open class UvcCameraFragment : Fragment() {
 
     @Composable
     fun TakePhotoView() {
+        var bitmap by remember {
+            mutableStateOf<Bitmap?>(null)
+        }
         Column {
-            var bitmap by remember {
-                mutableStateOf<Bitmap?>(null)
-            }
-
             Button(
                 onClick = {
                     val bit = mBinding.gpuImageView.capture()
                     bitmap = bit
+                    //把图片保存到相册
+                    saveImageToGallery1(bit,System.currentTimeMillis().toString())
+
                 }) {
                 Text("拍照")
             }
@@ -1259,6 +1292,39 @@ open class UvcCameraFragment : Fragment() {
             }
         }
     }
+
+
+    private fun saveImageToGallery1(bitmap: Bitmap, albumName: String) {
+        val filename = "${System.currentTimeMillis()}.jpg"
+        val write = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            if (write) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + File.separator + albumName)
+            } else {
+                val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + File.separator + albumName
+                val image = File(imagesDir, filename)
+                put(MediaStore.MediaColumns.DATA, image.absolutePath)
+            }
+        }
+
+        val uri = requireContext().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        try {
+            uri?.let {
+                requireContext().contentResolver.openOutputStream(it).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream!!)
+                }
+            } ?: throw IOException("Failed to create new MediaStore record.")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }finally {
+//            MediaScannerConnection.scanFile(context, arrayOf(file.toString()), null, null)
+            requireContext().sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri))
+        }
+    }
+
 
 
     @Composable

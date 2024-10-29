@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
         replaceDemoFragment(UvcCameraFragment())
+//        replaceDemoFragment(GrayWorldFragment())
 //        replaceDemoFragment(DemoFragment())
         val uri = Uri.parse("package:${this.packageName}")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
