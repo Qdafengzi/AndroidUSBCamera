@@ -1,13 +1,16 @@
-package jp.co.cyberagent.android.gpuimage.filter
+package jp.co.cyberagent.android.gpuimage.filter.custom
 
 import android.opengl.GLES30
 import com.gemlightbox.core.utils.XLogger
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 
 
 /**
  * 灰度世界算法
  */
-class GPUGrayWorldBalanceFilter @JvmOverloads constructor(avgR: Float = 1.0f, avgG: Float = 1.0f, avgB: Float = 1.0f) : GPUImageFilter(NO_FILTER_VERTEX_SHADER, FRAGMENT_SHADER) {
+class GPUGrayWorldBalanceFilter @JvmOverloads constructor(avgR: Float = 1.0f, avgG: Float = 1.0f, avgB: Float = 1.0f) : GPUImageFilter(
+    NO_FILTER_VERTEX_SHADER, FRAGMENT_SHADER
+) {
 
     companion object {
         val FRAGMENT_SHADER = """

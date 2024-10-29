@@ -81,11 +81,10 @@ import com.camera.demo.uvc_data.UvcCameraUIState
 import com.camera.utils.XLogger
 import com.herohan.uvcapp.CameraHelper
 import com.herohan.uvcapp.ICameraHelper
-import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.Size
 import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
 import jp.co.cyberagent.android.gpuimage.GPUImageView
-import jp.co.cyberagent.android.gpuimage.filter.GPUGrayWorldBalanceFilter
+import jp.co.cyberagent.android.gpuimage.filter.custom.GPUGrayWorldBalanceFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageContrastFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageExposureFilter
@@ -97,6 +96,7 @@ import jp.co.cyberagent.android.gpuimage.filter.GPUImageLevelsFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageSaturationFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageSharpenFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageWhiteBalanceFilter
+import jp.co.cyberagent.android.gpuimage.filter.custom.GPUImagePerfectReflectorBalanceFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -190,6 +190,10 @@ open class UvcCameraFragment : Fragment() {
         GPUGrayWorldBalanceFilter()
     }
 
+    private val mGPUImagePerfectReflectorBalanceFilter by lazy {
+        GPUImagePerfectReflectorBalanceFilter()
+    }
+
     private val mNV21ToBitmap by lazy {
         NV21ToBitmap(requireContext())
     }
@@ -245,7 +249,7 @@ open class UvcCameraFragment : Fragment() {
                             )
                         }
                         bitmap?.let {
-                            XLogger.d("bitmap的大小:${bitmap.width}*${bitmap.height}")
+//                            XLogger.d("bitmap的大小:${bitmap.width}*${bitmap.height}")
                             mBinding.gpuImageView.setImage(bitmap)
                         }
                     }
@@ -612,7 +616,7 @@ open class UvcCameraFragment : Fragment() {
             gpuImageFilters.add(mGPUImageContrastFilter)
             gpuImageFilters.add(mGPUImageHueFilter)
             gpuImageFilters.add(mGPUGrayWorldFilter)
-//            gpuImageFilters.add(mGPUPerfectReflectorBalanceFilter)
+            gpuImageFilters.add(mGPUImagePerfectReflectorBalanceFilter)
         }
 
         mBinding.gpuImageView.apply {
@@ -681,6 +685,21 @@ open class UvcCameraFragment : Fragment() {
                    }
                 }) {
                     Text("GrayWorld")
+                }
+
+                TextButton(onClick = {
+                    scope.launch(Dispatchers.IO) {
+                        val bitmap = mBinding.aspectView.bitmap
+                        bitmap?.apply {
+                            val array = Utils.calculateAverageColor(bitmap)
+                            withContext(Dispatchers.Main) {
+                                mGPUImagePerfectReflectorBalanceFilter.setPerfectReflectorFactors(array[0], array[1], array[2])
+                                mBinding.gpuImageView.requestRender()
+                            }
+                        }
+                    }
+                }) {
+                    Text("PerfectReflector")
                 }
             }
             DropdownMenu(expanded = show, onDismissRequest = {

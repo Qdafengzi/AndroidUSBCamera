@@ -9,16 +9,25 @@ import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -27,18 +36,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.Fragment
+import com.camera.demo.Utils.calculateAverageColor
 import com.camera.demo.databinding.FragmentGrayWorldBinding
 import com.camera.utils.XLogger
+import com.serenegiant.usb.Size
+import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
 import jp.co.cyberagent.android.gpuimage.GPUImageView
-import jp.co.cyberagent.android.gpuimage.filter.GPUDynamicThresholdFilter
-import jp.co.cyberagent.android.gpuimage.filter.GPUGrayWorldBalanceFilter
+import jp.co.cyberagent.android.gpuimage.filter.custom.GPUDynamicThresholdFilter
+import jp.co.cyberagent.android.gpuimage.filter.custom.GPUGrayWorldBalanceFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
-import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
-import jp.co.cyberagent.android.gpuimage.filter.GPUPerfectReflectorBalanceFilter
+import jp.co.cyberagent.android.gpuimage.filter.custom.GPUImagePerfectReflectorBalanceFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,12 +58,9 @@ import kotlinx.coroutines.withContext
 class GrayWorldFragment : Fragment() {
     lateinit var binding: FragmentGrayWorldBinding
 
-    private val mGPUDynamicThresholdFilter by lazy {
-        GPUDynamicThresholdFilter()
-    }
 
     private val mGPUPerfectReflectorBalanceFilter by lazy {
-        GPUPerfectReflectorBalanceFilter()
+        GPUImagePerfectReflectorBalanceFilter()
     }
 
     private val mGPUGrayWorldBalanceFilter by lazy {
@@ -65,9 +74,28 @@ class GrayWorldFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        val bitmap = BitmapFactory.decodeResource(resources, R.mipmap.image1)
+
         binding.composeView.setContent {
+
+            val imageList = mutableListOf<Int>()
+
+
             val scope = rememberCoroutineScope()
+            val bitmap = remember { mutableStateOf<Bitmap?>(null) }
+
+            LaunchedEffect(Unit) {
+                bitmap.value = BitmapFactory.decodeResource(resources, R.mipmap.image2)
+                imageList.add(R.mipmap.image1)
+                imageList.add(R.mipmap.image2)
+                imageList.add(R.mipmap.image3)
+                imageList.add(R.mipmap.image4)
+                imageList.add(R.mipmap.image6)
+                imageList.add(R.mipmap.image_l_1)
+                imageList.add(R.mipmap.image_l_2)
+                imageList.add(R.mipmap.image_l_3)
+                imageList.add(R.mipmap.image_l_4)
+            }
+
 
             Column(
                 modifier = Modifier
@@ -75,16 +103,18 @@ class GrayWorldFragment : Fragment() {
                     .background(color = Color.White)
             ) {
                 var gpuImageView by remember { mutableStateOf<GPUImageView?>(null) }
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(4 / 3f)
-                        .border(width = 1.dp,color = Color.Black)
-                    ,
-                    contentDescription = "",
-                    contentScale = ContentScale.FillWidth
-                )
+                bitmap.value?.let {
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(4 / 3f)
+                            .border(width = 1.dp, color = Color.Black),
+                        contentDescription = "",
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
                 AndroidView(
                     factory = { context ->
                         GPUImageView(context).apply {
@@ -94,24 +124,31 @@ class GrayWorldFragment : Fragment() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(4 / 3f)
-                        .border(width = 1.dp,color = Color.Black)
-                    ,
+                        .border(width = 1.dp, color = Color.Black),
                     update = {
-                        gpuImageView?.setImage(bitmap)
+                        bitmap.value?.let {
+                            gpuImageView?.setImage(bitmap.value)
+                        }
                     },
                 )
-                Row(modifier = Modifier.fillMaxWidth()){
+                Row(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = {
-                            scope.launch(Dispatchers.IO) {
-                                gpuImageView?.filter = mGPUGrayWorldBalanceFilter
-                                val array = calculateAverageColor(bitmap)
-                                XLogger.d("${array[0]} ${array[1]} ${array[2]}")
-                                mGPUGrayWorldBalanceFilter.setGrayWorldFactors(array[0], array[1], array[2])
-                                withContext(Dispatchers.Main){
-                                    gpuImageView?.requestRender()
-                                }
+                            if (bitmap.value != null) {
+                                scope.launch(Dispatchers.IO) {
+                                    gpuImageView?.filter = mGPUGrayWorldBalanceFilter
+                                    val array = calculateAverageColor(bitmap.value!!)
+                                    XLogger.d("${array[0]} ${array[1]} ${array[2]}")
+                                    mGPUGrayWorldBalanceFilter.setGrayWorldFactors(
+                                        array[0],
+                                        array[1],
+                                        array[2]
+                                    )
+                                    withContext(Dispatchers.Main) {
+                                        gpuImageView?.requestRender()
+                                    }
 
+                                }
                             }
                         }
                     ) {
@@ -120,13 +157,20 @@ class GrayWorldFragment : Fragment() {
 
                     TextButton(
                         onClick = {
-                            scope.launch(Dispatchers.IO) {
-                                gpuImageView?.filter = mGPUPerfectReflectorBalanceFilter
-                                val array = calculateAverageColor(bitmap)
-                                XLogger.d("${array[0]} ${array[1]} ${array[2]}")
-                                mGPUPerfectReflectorBalanceFilter.setPerfectReflectorFactors(array[0], array[1], array[2])
-                                gpuImageView?.requestRender()
+                            if (bitmap.value != null) {
+                                scope.launch(Dispatchers.IO) {
+                                    gpuImageView?.filter = mGPUPerfectReflectorBalanceFilter
+                                    val array = calculateAverageColor(bitmap.value!!)
+                                    XLogger.d("${array[0]} ${array[1]} ${array[2]}")
+                                    mGPUPerfectReflectorBalanceFilter.setPerfectReflectorFactors(
+                                        array[0],
+                                        array[1],
+                                        array[2]
+                                    )
+                                    gpuImageView?.requestRender()
+                                }
                             }
+
                         }
                     ) {
                         Text(text = "完美反射算法", fontSize = 16.sp)
@@ -136,7 +180,7 @@ class GrayWorldFragment : Fragment() {
                         onClick = {
                             scope.launch(Dispatchers.IO) {
                                 gpuImageView?.filter = GPUImageFilter()
-                                gpuImageView?.setImage(bitmap)
+                                gpuImageView?.setImage(bitmap.value)
                             }
                         }
                     ) {
@@ -144,9 +188,44 @@ class GrayWorldFragment : Fragment() {
                     }
                 }
 
-
-
-
+                var show by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        TextButton(
+                            onClick = {
+                                show = true
+                            }) {
+                            Text("选照片")
+                        }
+                    }
+                    DropdownMenu(
+                        modifier = Modifier.fillMaxSize(),
+                        expanded = show,
+                        onDismissRequest = {
+                            show = false
+                        },
+                    ) {
+                        imageList.forEach {
+                            DropdownMenuItem(
+                                modifier = Modifier.fillMaxWidth()
+                                ,
+                                text = {
+                                    Image(
+                                        painter = painterResource(it),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.5f)
+                                            .aspectRatio(4 / 3f)
+                                    )
+                                },
+                                onClick = {
+                                    show = false
+                                    bitmap.value = BitmapFactory.decodeResource(resources, it)
+                                },
+                            )
+                        }
+                    }
+                }
 
 
 //                val sliderValue = remember { mutableFloatStateOf(0.5f) }

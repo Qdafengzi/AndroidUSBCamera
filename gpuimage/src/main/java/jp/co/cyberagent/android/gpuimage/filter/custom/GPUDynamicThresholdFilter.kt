@@ -1,6 +1,7 @@
-package jp.co.cyberagent.android.gpuimage.filter;
+package jp.co.cyberagent.android.gpuimage.filter.custom;
 
 import android.opengl.GLES30;
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 
 import kotlin.jvm.JvmOverloads;
 

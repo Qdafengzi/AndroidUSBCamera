@@ -1,15 +1,18 @@
-package jp.co.cyberagent.android.gpuimage.filter;
+package jp.co.cyberagent.android.gpuimage.filter.custom;
 
 import android.opengl.GLES30;
 
 import com.gemlightbox.core.utils.XLogger;
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 
 import kotlin.jvm.JvmOverloads;
 
 /**
  *  完美反射算法
  */
-class GPUPerfectReflectorBalanceFilter @JvmOverloads constructor(maxR: Float = 0.7154364f, maxG: Float = 0.70618117f, maxB: Float = 0.6837189f) : GPUImageFilter(NO_FILTER_VERTEX_SHADER, FRAGMENT_SHADER) {
+class GPUImagePerfectReflectorBalanceFilter @JvmOverloads constructor(maxR: Float = 0.7154364f, maxG: Float = 0.70618117f, maxB: Float = 0.6837189f) : GPUImageFilter(
+    NO_FILTER_VERTEX_SHADER, FRAGMENT_SHADER
+) {
 
     companion object {
         val FRAGMENT_SHADER = """
