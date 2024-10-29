@@ -82,6 +82,7 @@ import com.herohan.uvcapp.CameraHelper
 import com.herohan.uvcapp.ICameraHelper
 import com.serenegiant.usb.IFrameCallback
 import com.serenegiant.usb.Size
+import com.serenegiant.usb.UVCCamera
 import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
 import jp.co.cyberagent.android.gpuimage.GPUImageView
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBrightnessFilter
@@ -203,9 +204,15 @@ open class UvcCameraFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        mBinding.aspectView.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         mBinding.aspectView.setZoomCallback {zoom->
             XLogger.d("zoom--->")
+//
+//            mCameraHelper?.uvcControl?.irisAbsolute
+//            mCameraHelper?.uvcControl?.focusAuto = true
+//            mCameraHelper?.uvcControl?.updateZoomAbsoluteLimit()
+//            mCameraHelper?.uvcControl?.zoomAbsolute = zoom
+//            mBinding.aspectView.scaleX = zoom.toFloat()
+//            mBinding.aspectView.scaleY = zoom.toFloat()
         }
         mBinding.aspectView.surfaceTextureListener = object :TextureView.SurfaceTextureListener{
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
@@ -222,7 +229,6 @@ open class UvcCameraFragment : Fragment() {
             }
 
             override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
-//                XLogger.d("onSurfaceTextureUpdated----->")
                 lifecycleScope.launch(Dispatchers.IO) {
                     val bitmap = mBinding.aspectView.bitmap
                     withContext(Dispatchers.Main) {
@@ -234,12 +240,9 @@ open class UvcCameraFragment : Fragment() {
                                 mCurrentAspectWithP,
                                 mCurrentAspectHeightP
                             )
-                            mBinding.aspectView.setAspectRatio(
-                                mCurrentAspectWithP,
-                                mCurrentAspectHeightP
-                            )
                         }
                         bitmap?.let {
+                            XLogger.d("bitmap的大小:${bitmap.width}*${bitmap.height}")
                             mBinding.gpuImageView.setImage(bitmap)
                         }
                     }
@@ -346,8 +349,19 @@ open class UvcCameraFragment : Fragment() {
             frame[nv21, 0, nv21.size]
             //
 //                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
-            logWithInterval("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
+            XLogger.d("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
             val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
+
+            if (!previewConfigured && bitmap != null) {
+                size = if (bitmap.width > 2160) bitmap.width else 2160
+                XLogger.d("size 大小:${size} ${bitmap.width}* ${bitmap.height}")
+                previewConfigured = true
+                setViewRatio(
+                    mCurrentAspectWithP,
+                    mCurrentAspectHeightP
+                )
+            }
+
             lifecycleScope.launch(Dispatchers.Main) {
                 mBinding.gpuImageView.setImage(bitmap)
             }
@@ -380,18 +394,18 @@ open class UvcCameraFragment : Fragment() {
 
     private val mStateListener: ICameraHelper.StateCallback = object : ICameraHelper.StateCallback {
         override fun onAttach(device: UsbDevice) {
-            XLogger.d("uvc camera onAttach")
+            XLogger.d("uvc camera life onAttach")
             selectDevice(device)
         }
 
         override fun onDeviceOpen(device: UsbDevice, isFirstOpen: Boolean) {
-            XLogger.d("uvc camera onDeviceOpen")
+            XLogger.d("uvc camera life onDeviceOpen")
             mCameraHelper?.openCamera()
             mViewModel.updateDeviceInfo(device)
         }
 
         override fun onCameraOpen(device: UsbDevice) {
-            XLogger.d("uvc camera onCameraOpen")
+            XLogger.d("uvc camera life onCameraOpen")
             mCameraHelper?.apply {
                 val uvcConfig = UvcCameraUIState(
                     autoWhiteBalance = uvcControl.whiteBalanceAuto,
@@ -456,22 +470,22 @@ open class UvcCameraFragment : Fragment() {
 
                 this@UvcCameraFragment.mPreviewSize = previewSize
                 if (previewSize != null) {
-                    val width = previewSize!!.width
-                    val height = previewSize!!.height
+//                    val width = previewSize!!.width
+//                    val height = previewSize!!.height
                     //auto aspect ratio
-                    mBinding.aspectView.setAspectRatio(width, height)
+//                    mBinding.aspectView.setAspectRatio(width, height)
+                    XLogger.d("预览画面的大小:${previewSize.width}*${previewSize.height}")
+                    mBinding.aspectView.setAspectRatio(previewSize.width,previewSize.height)
                 }
 
-
-                mCameraHelper?.addSurface(mBinding.aspectView.surfaceTexture, false)
-//                mCameraHelper?.setFrameCallback(mFrameCallback, UVCCamera.PIXEL_FORMAT_RGBX)
-
+                addSurface(mBinding.aspectView.surfaceTexture, false)
+                //setFrameCallback(mFrameCallback, UVCCamera.PIXEL_FORMAT_RGBX)
                 initFPS()
             }
         }
 
         override fun onCameraClose(device: UsbDevice) {
-            XLogger.d("uvc camera onCameraClose")
+            XLogger.d("uvc camera life onCameraClose")
             if (mCameraHelper != null) {
                 mCameraHelper!!.removeSurface(mBinding.aspectView.surfaceTexture)
             }
@@ -480,15 +494,15 @@ open class UvcCameraFragment : Fragment() {
         }
 
         override fun onDeviceClose(device: UsbDevice) {
-            XLogger.d("uvc camera onDeviceClose")
+            XLogger.d("uvc camera life onDeviceClose")
         }
 
         override fun onDetach(device: UsbDevice) {
-            XLogger.d("uvc camera onDetach")
+            XLogger.d("uvc camera life onDetach")
         }
 
         override fun onCancel(device: UsbDevice) {
-            XLogger.d("uvc camera onCancel")
+            XLogger.d("uvc camera life onCancel")
         }
     }
 
@@ -1080,6 +1094,7 @@ open class UvcCameraFragment : Fragment() {
                             withContext(Dispatchers.Main) {
                                 previewConfigured = false
                                 size = 1080
+//                                mBinding.aspectView.setAspectRatio(it.widthP,it.heightP)
 //                                setViewRatio(it.widthP, it.heightP)
 //                                mBinding.gpuImageView.setRatio(it.widthP.toFloat() / it.heightP)
                             }

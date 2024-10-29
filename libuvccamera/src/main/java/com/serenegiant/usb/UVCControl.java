@@ -135,6 +135,7 @@ public class UVCControl {
     protected int mExposureTimeRelativeMin, mExposureTimeRelativeMax, mExposureTimeRelativeDef;
     protected int mFocusAbsoluteMin, mFocusAbsoluteMax, mFocusAbsoluteDef;
     protected int mFocusRelativeMin, mFocusRelativeMax, mFocusRelativeDef;
+    //虹膜
     protected int mIrisAbsoluteMin, mIrisAbsoluteMax, mIrisAbsoluteDef;
     protected int mIrisRelativeMin, mIrisRelativeMax, mIrisRelativeDef;
     protected int mZoomAbsoluteMin, mZoomAbsoluteMax, mZoomAbsoluteDef;

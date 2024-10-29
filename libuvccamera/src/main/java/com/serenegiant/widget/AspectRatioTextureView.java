@@ -79,6 +79,11 @@ public class AspectRatioTextureView extends TextureView    // API >= 14
         }
     }
 
+    /**
+     * 只有改变分辨率的时候才能调用
+     * @param width 分辨率宽度
+     * @param height 分辨率高度
+     */
     @Override
     public void setAspectRatio(final int width, final int height) {
         setAspectRatio(width / (double) height);
