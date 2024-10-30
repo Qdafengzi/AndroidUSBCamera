@@ -123,7 +123,7 @@ public class GLTextureView extends TextureView
 
     /**
      * Set the glWrapper. If the glWrapper is not null, its
-     * {@link GLWrapper#wrap(javax.microedition.khronos.opengles.GL)} method is called
+     * {@link GLWrapper#wrap(GL)} method is called
      * whenever a surface is created. A GLWrapper can be used to wrap
      * the GL object that's passed to the renderer. Wrapping a GL
      * object enables examining and modifying the behavior of the
@@ -593,8 +593,8 @@ public class GLTextureView extends TextureView
      * the EGL context is lost, all OpenGL resources (such as textures) that are
      * associated with that context will be automatically deleted. In order to
      * keep rendering correctly, a renderer must recreate any lost resources
-     * that it still needs. The {@link #onSurfaceCreated(javax.microedition.khronos.opengles.GL10,
-     * javax.microedition.khronos.egl.EGLConfig)} method
+     * that it still needs. The {@link #onSurfaceCreated(GL10,
+     * EGLConfig)} method
      * is a convenient place to do this.
      *
      * @see #setRenderer(Renderer)

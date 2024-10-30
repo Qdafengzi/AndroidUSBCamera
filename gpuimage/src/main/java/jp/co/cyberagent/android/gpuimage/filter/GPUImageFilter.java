@@ -292,7 +292,7 @@ public class GPUImageFilter {
         return "";
     }
 
-    public static String convertStreamToString(java.io.InputStream is) {
+    public static String convertStreamToString(InputStream is) {
         java.util.Scanner s = new java.util.Scanner(is).useDelimiter("\\A");
         return s.hasNext() ? s.next() : "";
     }

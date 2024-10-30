@@ -8,18 +8,6 @@
 
 package jp.co.cyberagent.android.gpuimage;
 
-import android.graphics.Bitmap;
-import android.opengl.EGL14;
-import android.opengl.GLSurfaceView;
-import android.util.Log;
-
-import javax.microedition.khronos.egl.EGL10;
-import javax.microedition.khronos.egl.EGLConfig;
-import javax.microedition.khronos.egl.EGLContext;
-import javax.microedition.khronos.egl.EGLDisplay;
-import javax.microedition.khronos.egl.EGLSurface;
-import javax.microedition.khronos.opengles.GL10;
-
 import static javax.microedition.khronos.egl.EGL10.EGL_ALPHA_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_BLUE_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_DEFAULT_DISPLAY;
@@ -31,6 +19,17 @@ import static javax.microedition.khronos.egl.EGL10.EGL_NO_CONTEXT;
 import static javax.microedition.khronos.egl.EGL10.EGL_RED_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_STENCIL_SIZE;
 import static javax.microedition.khronos.egl.EGL10.EGL_WIDTH;
+
+import android.graphics.Bitmap;
+import android.opengl.GLSurfaceView;
+import android.util.Log;
+
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.egl.EGLSurface;
+import javax.microedition.khronos.opengles.GL10;
 
 public class PixelBuffer {
     private final static String TAG = "PixelBuffer";
