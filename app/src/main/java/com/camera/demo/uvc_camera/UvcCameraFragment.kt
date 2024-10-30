@@ -54,9 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.camera.demo.CustomFPS
 import com.camera.demo.GPUImageMovieWriter
-import com.camera.demo.NV21ToBitmap
 import com.camera.demo.SliderView
 import com.camera.demo.Utils
 import com.camera.demo.databinding.FragmentDemo02Binding
@@ -89,14 +87,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.text.DecimalFormat
 import java.util.concurrent.CopyOnWriteArrayList
 
 open class UvcCameraFragment : Fragment() {
     private var mCurrentAspectWithP = 1
     private var mCurrentAspectHeightP = 1
     private var mCameraHelper: ICameraHelper? = null
-    private var mCustomFPS: CustomFPS? = null
     private var mPreviewSize: Size? = null
     private var size = 1080
     private val mViewModel = UvcCameraViewModel()
@@ -341,7 +337,6 @@ open class UvcCameraFragment : Fragment() {
             if (mCameraHelper != null) {
                 mCameraHelper!!.removeSurface(mBinding.aspectView.surfaceTexture)
             }
-            clearFPS()
         }
 
         override fun onDeviceClose(device: UsbDevice) {
@@ -420,43 +415,47 @@ open class UvcCameraFragment : Fragment() {
                 focusAuto = false
             }
 
-            this@UvcCameraFragment.mPreviewSize = previewSize
             if (previewSize != null) {
-//                    val width = previewSize!!.width
-//                    val height = previewSize!!.height
-                //auto aspect ratio
-//                    mBinding.aspectView.setAspectRatio(width, height)
+                mPreviewSize = previewSize
                 XLogger.d("预览画面的大小:${previewSize.width}*${previewSize.height}")
                 mBinding.aspectView.setAspectRatio(previewSize.width, previewSize.height)
             }
 
             addSurface(mBinding.aspectView.surfaceTexture, false)
-            //setFrameCallback(mFrameCallback, UVCCamera.PIXEL_FORMAT_RGBX)
-            initFPS()
-        }
-    }
-
-    private fun initFPS() {
-        val decimal = DecimalFormat(" #.0' fps'")
-        mCustomFPS = CustomFPS()
-        mCustomFPS?.addListener { fps ->
-            //XLogger.d("FPS:${decimal.format(fps)}")
-        }
-    }
-
-    private fun clearFPS() {
-        if (mCustomFPS != null) {
-            mCustomFPS!!.release()
-            mCustomFPS = null
+//            setFrameCallback(mFrameCallback, UVCCamera.PIXEL_FORMAT_RGBX)
         }
     }
 
 
+//    private val mFrameCallback = IFrameCallback { frame ->
+//        if (frame != null && mPreviewSize != null) {
+//            val nv21 = ByteArray(frame.remaining())
+//            frame[nv21, 0, nv21.size]
+//            //
+////                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
+//            XLogger.d("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
+//            val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
+//            lifecycleScope.launch(Dispatchers.Main) {
+//                if (!previewConfigured && bitmap != null) {
+//                    size = if (bitmap.width > 2160) bitmap.width else 2160
+//                    XLogger.d("size 大小:${size} ${bitmap.width}* ${bitmap.height}")
+//                    previewConfigured = true
+//                    setViewRatio(
+//                        mCurrentAspectWithP,
+//                        mCurrentAspectHeightP
+//                    )
+//                }
+//                bitmap?.let {
+//                    XLogger.d("bitmap的大小:${bitmap.width}*${bitmap.height}")
+//                    mBinding.gpuImageView.setImage(bitmap)
+//                }
+//            }
+//        }
+//    }
 
     private fun setFilter(haveFilter: Boolean = true) {
         mGPUImageFilters.clear()
         mBinding.gpuImageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
-        mGPUImageFilters.add(mGpuImageMovieWriter)
         if (haveFilter) {
             mGPUImageFilters.add(mGpuImageLevelsFilter)
             mGPUImageFilters.add(mGPUImageBrightnessFilter)
@@ -470,6 +469,8 @@ open class UvcCameraFragment : Fragment() {
             mGPUImageFilters.add(mGPUGrayWorldFilter)
             mGPUImageFilters.add(mGPUImagePerfectReflectorBalanceFilter)
         }
+        //！！！一定要放在最后面 要不然没效果
+        mGPUImageFilters.add(mGpuImageMovieWriter)
 
         mBinding.gpuImageView.apply {
             filter = GPUImageFilterGroup(mGPUImageFilters)
@@ -1154,6 +1155,8 @@ open class UvcCameraFragment : Fragment() {
                 }
 //                    setFilter()
                 //todo:set 数据
+                mGpuImageMovieWriter.onInit()
+
                 mGpuImageMovieWriter.apply {
                     prepareRecording(
                         videoFile.absolutePath,
