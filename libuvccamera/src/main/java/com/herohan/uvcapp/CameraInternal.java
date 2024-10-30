@@ -145,7 +145,7 @@ final class CameraInternal implements ICameraInternal {
 
     @Override
     public void addSurface(final Object surface, final boolean isRecordable) {
-        if (DEBUG) Log.d(TAG, "addSurface:surface=" + surface);
+        if (DEBUG) Log.d(TAG, "addSurface:surface====" + surface);
         if (mRendererHolder != null) {
             mRendererHolder.addSlaveSurface(surface.hashCode(), surface, isRecordable);
         }

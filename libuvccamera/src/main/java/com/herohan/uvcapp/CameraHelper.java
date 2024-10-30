@@ -6,6 +6,7 @@ import static com.herohan.uvcapp.ImageCapture.ERROR_UNKNOWN;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.usb.UsbDevice;
+import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -159,7 +160,10 @@ public class CameraHelper implements ICameraHelper {
     private Object fetchSurface(final Object surface) {
         // check surface is valid or not
         Object sur;
-        if (surface instanceof SurfaceView) {
+        if (surface instanceof GLSurfaceView) {
+            GLSurfaceView glSurfaceView = (GLSurfaceView) surface;
+            sur = glSurfaceView.getHolder().getSurface();
+        } else if (surface instanceof SurfaceView) {
             SurfaceView surfaceView = (SurfaceView) surface;
             sur = surfaceView.getHolder().getSurface();
         } else if (surface instanceof SurfaceHolder) {
@@ -176,7 +180,6 @@ public class CameraHelper implements ICameraHelper {
             throw new java.lang.UnsupportedOperationException(
                     "surface is null.");
         }
-
         return sur;
     }
 

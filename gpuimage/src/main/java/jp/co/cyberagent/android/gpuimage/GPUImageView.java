@@ -471,7 +471,7 @@ public class GPUImageView extends FrameLayout {
         }
     }
 
-    private class GPUImageGLSurfaceView extends GLSurfaceView {
+    public class GPUImageGLSurfaceView extends GLSurfaceView {
         public GPUImageGLSurfaceView(Context context) {
             super(context);
         }

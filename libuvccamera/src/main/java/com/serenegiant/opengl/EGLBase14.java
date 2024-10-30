@@ -41,7 +41,6 @@ import android.view.SurfaceView;
 /**
  * Helper class for creating and using EGL rendering context
  */
-@TargetApi(Build.VERSION_CODES.JELLY_BEAN_MR2)
         /*package*/ class EGLBase14 extends EGLBase {    // API >= 17
     private static final boolean DEBUG = false;    // TODO set false on release
     private static final String TAG = EGLBase14.class.getSimpleName();

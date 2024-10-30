@@ -28,7 +28,7 @@
             android:layout_height="match_parent"
             android:scaleX="1.01"
             android:scaleY="1.01"
-            app:gpuimage_surface_type="surface_view" />
+            app:gpuimage_surface_type="texture_view" />
     </FrameLayout>
 
 

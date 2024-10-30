@@ -4,9 +4,11 @@ import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
+import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ScaleGestureDetector
+import android.view.SurfaceHolder
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
@@ -204,18 +206,21 @@ open class UvcCameraFragment : Fragment() {
     }
 
     private var mScaleFactor = 1.0f
-    private val scaleGestureDetector = ScaleGestureDetector(
-        requireContext(),
-        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                mScaleFactor *= detector.scaleFactor
-                mScaleFactor = max(1f, min(mScaleFactor, 15.0f))  // Limit the scale factor to reasonable bounds
-                mBinding.gpuImageView.surfaceView.scaleX = mScaleFactor
-                mBinding.gpuImageView.surfaceView.scaleY = mScaleFactor
-                mGpuImageMovieWriter.scaleFactor = mScaleFactor
-                return true
-            }
-        })
+    private val scaleGestureDetector by lazy {
+        ScaleGestureDetector(
+            requireContext(),
+            object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                override fun onScale(detector: ScaleGestureDetector): Boolean {
+                    mScaleFactor *= detector.scaleFactor
+                    // Limit the scale factor to reasonable bounds
+                    mScaleFactor = max(1f, min(mScaleFactor, 15.0f))
+                    mBinding.gpuImageView.surfaceView.scaleX = mScaleFactor
+                    mBinding.gpuImageView.surfaceView.scaleY = mScaleFactor
+                    mGpuImageMovieWriter.scaleFactor = mScaleFactor
+                    return true
+                }
+            })
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun initListener() {
@@ -223,6 +228,58 @@ open class UvcCameraFragment : Fragment() {
             scaleGestureDetector.onTouchEvent(event)
             true
         }
+
+//        val view = mBinding.gpuImageView.surfaceView as GPUImageView.GPUImageGLSurfaceView
+//        view.holder.addCallback(object : SurfaceHolder.Callback {
+//            override fun surfaceCreated(holder: SurfaceHolder) {
+//                XLogger.d("surfaceCreated------>")
+//                mCameraHelper?.addSurface(view, false)
+//            }
+//
+//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+//                XLogger.d("尺寸改变:${width}*${height}")
+//            }
+//
+//            override fun surfaceDestroyed(holder: SurfaceHolder) {
+//                mCameraHelper?.removeSurface(view)
+//            }
+//        })
+
+
+//        val view = mBinding.gpuImageView.surfaceView as GPUImageView.GPUImageGLTextureView
+//        view.addSurfaceTextureListener(object :TextureView.SurfaceTextureListener{
+//            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+//                mCameraHelper?.addSurface(surface, false)
+//            }
+//
+//            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+//                XLogger.d("尺寸改变:${width}*${height}")
+//            }
+//
+//            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+//                mCameraHelper?.removeSurface(surface)
+//                return true
+//            }
+//
+//            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+//                XLogger.d("onSurfaceTextureUpdated----->")
+//            }
+//
+//        })
+//        view.holder.addCallback(object : SurfaceHolder.Callback {
+//            override fun surfaceCreated(holder: SurfaceHolder) {
+//                XLogger.d("surfaceCreated------>")
+//                mCameraHelper?.addSurface(view, false)
+//            }
+//
+//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+//                XLogger.d("尺寸改变:${width}*${height}")
+//            }
+//
+//            override fun surfaceDestroyed(holder: SurfaceHolder) {
+//                mCameraHelper?.removeSurface(view)
+//            }
+//        })
 
         mBinding.aspectView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {

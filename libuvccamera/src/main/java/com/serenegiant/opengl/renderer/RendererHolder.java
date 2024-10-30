@@ -212,12 +212,10 @@ public class RendererHolder extends EGLTask implements IRendererHolder {
     public void addSlaveSurface(final int id,
                                 final Object surface, final boolean isRecordable, final int maxFps)
             throws IllegalStateException, IllegalArgumentException {
-
         if (DEBUG) Log.v(TAG, "addSlaveSurface:id=" + id + ",surface=" + surface);
         if (!((surface instanceof SurfaceTexture)
                 || (surface instanceof Surface)
                 || (surface instanceof SurfaceHolder))) {
-
             throw new IllegalArgumentException(
                     "Surface should be one of Surface, SurfaceTexture or SurfaceHolder");
         }
@@ -662,9 +660,7 @@ public class RendererHolder extends EGLTask implements IRendererHolder {
                 mTexId = GLHelper.initTex(GL_TEXTURE_EXTERNAL_OES, GLES20.GL_NEAREST);
                 mPrimaryTexture = new SurfaceTexture(mTexId);
                 mPrimarySurface = new Surface(mPrimaryTexture);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
-                    mPrimaryTexture.setDefaultBufferSize(mVideoWidth, mVideoHeight);
-                }
+                mPrimaryTexture.setDefaultBufferSize(mVideoWidth, mVideoHeight);
                 mIsFirstFrameRendered = false;
                 mPrimaryTexture.setOnFrameAvailableListener(mOnFrameAvailableListener);
 
