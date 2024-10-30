@@ -8,7 +8,6 @@ import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ScaleGestureDetector
-import android.view.SurfaceHolder
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
@@ -94,6 +93,7 @@ import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.max
 import kotlin.math.min
+
 
 open class UvcCameraFragment : Fragment() {
     private var mCurrentAspectWithP = 1
@@ -652,6 +652,7 @@ open class UvcCameraFragment : Fragment() {
                             val size = Size(UVC_VS_FRAME_MJPEG, it.width, it.height, it.fps, it.fpsList)
                             mCameraHelper?.apply {
                                 stopPreview()
+                                mPreviewSize = size
                                 previewSize = size
                                 startPreview()
                                 mBinding.aspectView.setAspectRatio(size.width, size.height)
