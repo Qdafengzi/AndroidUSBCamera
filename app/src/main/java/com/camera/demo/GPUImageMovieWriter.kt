@@ -44,6 +44,11 @@ class GPUImageMovieWriter(private val cameraXListener: CameraXListener) : GPUIma
         mEGLContext = mEGL?.eglGetCurrentContext()
         mEGLScreenSurface = mEGL?.eglGetCurrentSurface(EGL10.EGL_DRAW)
     }
+    var scaleFactor = 1.0f
+
+    fun setCaleFactor(scaleFactor:Float){
+        this.scaleFactor = scaleFactor
+    }
 
     @Synchronized
     override fun onDraw(textureId: Int, cubeBuffer: FloatBuffer, textureBuffer: FloatBuffer) {
@@ -64,6 +69,11 @@ class GPUImageMovieWriter(private val cameraXListener: CameraXListener) : GPUIma
 
             // Draw on encoder surface
             mCodecInput?.makeCurrent()
+            // 你可能需要修改这里来应用缩放
+//            val scaledCubeBuffer = scaleBuffer(cubeBuffer, scaleFactor)
+//            val scaledTextureBuffer = scaleBuffer(textureBuffer, scaleFactor)
+            XLogger.d("GPUWriter OnDraw")
+//            super.onDraw(textureId, scaledCubeBuffer, scaledTextureBuffer)
             super.onDraw(textureId, cubeBuffer, textureBuffer)
             mCodecInput?.swapBuffers()
             mVideoEncoder?.frameAvailableSoon()
@@ -76,6 +86,30 @@ class GPUImageMovieWriter(private val cameraXListener: CameraXListener) : GPUIma
             XLogger.e("EGL : eglError $error")
         }
     }
+
+    /**
+     * 画面的缩放
+     */
+    private fun scaleBuffer(buffer: FloatBuffer, scaleFactor: Float): FloatBuffer {
+        // 重置buffer的position，以确保从头开始读取
+        buffer.position(0)
+
+        // 创建一个临时数组用于存储缩放后的坐标
+        val scaledArray = FloatArray(buffer.capacity())
+
+        // 遍历buffer中的每个元素，应用缩放因子
+        for (i in scaledArray.indices) {
+            scaledArray[i] = buffer.get() * scaleFactor
+        }
+
+        // 将缩放后的坐标数组重新写回buffer
+        buffer.clear() // 清除buffer，重置position和limit
+        buffer.put(scaledArray)
+        buffer.position(0) // 重置position，使得buffer准备好被读取
+
+        return buffer
+    }
+
 
     override fun onDestroy() {
         super.onDestroy()

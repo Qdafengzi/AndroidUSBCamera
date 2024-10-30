@@ -1,10 +1,12 @@
 package com.camera.demo.uvc_camera
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.SurfaceTexture
 import android.hardware.usb.UsbDevice
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.ScaleGestureDetector
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
@@ -88,6 +90,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.max
+import kotlin.math.min
 
 open class UvcCameraFragment : Fragment() {
     private var mCurrentAspectWithP = 1
@@ -199,17 +203,27 @@ open class UvcCameraFragment : Fragment() {
         initListener()
     }
 
+    private var mScaleFactor = 1.0f
+    private val scaleGestureDetector = ScaleGestureDetector(
+        requireContext(),
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                mScaleFactor *= detector.scaleFactor
+                mScaleFactor = max(1f, min(mScaleFactor, 15.0f))  // Limit the scale factor to reasonable bounds
+                mBinding.gpuImageView.surfaceView.scaleX = mScaleFactor
+                mBinding.gpuImageView.surfaceView.scaleY = mScaleFactor
+                mGpuImageMovieWriter.scaleFactor = mScaleFactor
+                return true
+            }
+        })
+
+    @SuppressLint("ClickableViewAccessibility")
     private fun initListener() {
-        mBinding.aspectView.setZoomCallback { zoom ->
-            XLogger.d("zoom--->")
-//
-//            mCameraHelper?.uvcControl?.irisAbsolute
-//            mCameraHelper?.uvcControl?.focusAuto = true
-//            mCameraHelper?.uvcControl?.updateZoomAbsoluteLimit()
-//            mCameraHelper?.uvcControl?.zoomAbsolute = zoom
-//            mBinding.aspectView.scaleX = zoom.toFloat()
-//            mBinding.aspectView.scaleY = zoom.toFloat()
+        mBinding.gpuImageView.surfaceView.setOnTouchListener { _, event ->
+            scaleGestureDetector.onTouchEvent(event)
+            true
         }
+
         mBinding.aspectView.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
                 mCameraHelper?.addSurface(surface, false)
