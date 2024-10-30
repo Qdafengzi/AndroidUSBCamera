@@ -72,6 +72,8 @@ import com.camera.demo.GPUImageMovieWriter
 import com.camera.demo.NV21ToBitmap
 import com.camera.demo.SliderView
 import com.camera.demo.Utils
+import com.camera.demo.Utils.saveImageToGallery1
+import com.camera.demo.Utils.saveVideoToGallery
 import com.camera.demo.databinding.FragmentDemo02Binding
 import com.camera.demo.encoder.CameraXListener
 import com.camera.demo.encoder.RecordListener
@@ -121,7 +123,8 @@ open class UvcCameraFragment : Fragment() {
     var mCurrentAspectHeightP = 1
     private var mCameraHelper: ICameraHelper? = null
     private var mCustomFPS: CustomFPS? = null
-
+    var mPreviewSize: Size? = null
+    protected var size = 1080
     private val mViewModel = UvcCameraViewModel()
 
     private val mGpuImageMovieWriter by lazy {
@@ -207,10 +210,27 @@ open class UvcCameraFragment : Fragment() {
         return mBinding.root
     }
 
-
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+//        mBinding.surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+//            override fun surfaceCreated(holder: SurfaceHolder) {
+//                mCameraHelper?.addSurface(holder.surface, false)
+//            }
+//
+//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+//                XLogger.d("尺寸改变:${width}*${height}")
+//            }
+//
+//            override fun surfaceDestroyed(holder: SurfaceHolder) {
+//                mCameraHelper?.removeSurface(holder.surface)
+//            }
+//        })
+        setFilter()
+        setContent()
+        initListener()
+    }
+
+    private fun initListener(){
         mBinding.aspectView.setZoomCallback {zoom->
             XLogger.d("zoom--->")
 //
@@ -256,25 +276,35 @@ open class UvcCameraFragment : Fragment() {
                 }
             }
         }
-
-//        mBinding.surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
-//            override fun surfaceCreated(holder: SurfaceHolder) {
-//                mCameraHelper?.addSurface(holder.surface, false)
-//            }
-//
-//            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-//                XLogger.d("尺寸改变:${width}*${height}")
-//            }
-//
-//            override fun surfaceDestroyed(holder: SurfaceHolder) {
-//                mCameraHelper?.removeSurface(holder.surface)
-//            }
-//        })
-        setFilter()
-        setContent()
     }
 
-    protected var size = 1080
+    override fun onStart() {
+        super.onStart()
+        initCameraHelper()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        clearCameraHelper()
+    }
+
+    private fun initCameraHelper() {
+        if (mCameraHelper == null) {
+            mCameraHelper = CameraHelper()
+            mCameraHelper?.setStateCallback(mStateListener)
+        }
+    }
+
+    private fun clearCameraHelper() {
+        if (mCameraHelper != null) {
+            mCameraHelper?.release()
+            mCameraHelper = null
+        }
+    }
+
+    private fun selectDevice(device: UsbDevice) {
+        mCameraHelper?.selectDevice(device)
+    }
 
     fun setViewRatio(ratioWidth: Int, ratioHeight: Int) {
         if (!previewConfigured){
@@ -315,90 +345,6 @@ open class UvcCameraFragment : Fragment() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        initCameraHelper()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        clearCameraHelper()
-    }
-
-    private fun initCameraHelper() {
-        if (mCameraHelper == null) {
-            mCameraHelper = CameraHelper()
-//            mCameraHelper?.previewSize = Size(UVC_VS_FRAME_MJPEG,1920,1080,30, listOf(30,60))
-
-            mCameraHelper?.setStateCallback(mStateListener)
-        }
-    }
-
-    private fun clearCameraHelper() {
-        if (mCameraHelper != null) {
-            mCameraHelper?.release()
-            mCameraHelper = null
-        }
-    }
-
-    private fun selectDevice(device: UsbDevice) {
-        mCameraHelper?.selectDevice(device)
-    }
-
-//    private val mFrameCallback = IFrameCallback { frame ->
-//        if (frame != null && mPreviewSize != null) {
-//            if (mCustomFPS != null) {
-//                //Refresh FPS
-//                mCustomFPS?.doFrame()
-//            }
-//
-//            //
-//            val nv21 = ByteArray(frame.remaining())
-//            frame[nv21, 0, nv21.size]
-//            //
-////                Bitmap bitmap = mNv21ToBitmap.nv21ToBitmap(nv21, size.width, size.height);
-//            XLogger.d("画面的尺寸：${mPreviewSize?.width}*${mPreviewSize?.height}")
-//            val bitmap = convertRGBXToBitmap(nv21, mPreviewSize!!.width, mPreviewSize!!.height)
-//
-//            if (!previewConfigured && bitmap != null) {
-//                size = if (bitmap.width > 2160) bitmap.width else 2160
-//                XLogger.d("size 大小:${size} ${bitmap.width}* ${bitmap.height}")
-//                previewConfigured = true
-//                setViewRatio(
-//                    mCurrentAspectWithP,
-//                    mCurrentAspectHeightP
-//                )
-//            }
-//
-//            lifecycleScope.launch(Dispatchers.Main) {
-//                mBinding.gpuImageView.setImage(bitmap)
-//            }
-//        }
-//    }
-
-    private fun convertRGBXToBitmap(rgbxData: ByteArray, width: Int, height: Int): Bitmap {
-        // 每个像素四个字节：RGBX
-        val pixels = IntArray(width * height)
-
-        for (i in pixels.indices) {
-            val r = rgbxData[i * 4].toInt() and 0xFF // 红色通道
-            val g = rgbxData[i * 4 + 1].toInt() and 0xFF // 绿色通道
-            val b = rgbxData[i * 4 + 2].toInt() and 0xFF // 蓝色通道
-
-            // int x = rgbxData[i * 4 + 3] & 0xFF; // 未使用的字节
-
-            // 构建 ARGB 颜色，A（透明度）设为 255（不透明）
-            pixels[i] = 0xFF shl 24 or (r shl 16) or (g shl 8) or b
-        }
-
-        // 创建一个 Bitmap 对象
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-
-        return bitmap
-    }
-
-    var mPreviewSize: Size? = null
 
     private val mStateListener: ICameraHelper.StateCallback = object : ICameraHelper.StateCallback {
         override fun onAttach(device: UsbDevice) {
@@ -528,78 +474,6 @@ open class UvcCameraFragment : Fragment() {
             mCustomFPS = null
         }
     }
-
-    fun yuv420ToBitmap(yuv420Data: ByteArray, width: Int, height: Int): Bitmap? {
-        // 创建 YuvImage 对象
-        val yuvImage = YuvImage(yuv420Data, ImageFormat.NV21, width, height, null)
-
-        // 使用 ByteArrayOutputStream 将 YuvImage 转换为 Bitmap
-        val outputStream = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(android.graphics.Rect(0, 0, width, height), 100, outputStream)
-
-        // 将输出流转换为 Bitmap
-        val bitmapArray = outputStream.toByteArray()
-        return BitmapFactory.decodeByteArray(bitmapArray, 0, bitmapArray.size)
-    }
-
-    data class CroppedNV21(
-        val data: ByteArray,
-        val width: Int,
-        val height: Int
-    )
-
-    fun cropNV21(
-        data: ByteArray?,
-        width: Int,
-        height: Int,
-        aspectRatio: Float
-    ): CroppedNV21? {
-        if (data == null) return null
-
-        // Calculate the new width and height based on the aspect ratio
-        val newWidth: Int
-        val newHeight: Int
-
-        if (aspectRatio == 1.0f) {
-            // For 1:1 aspect ratio
-            newWidth = minOf(width, height)
-            newHeight = newWidth
-        } else {
-            if (width.toFloat() / height > aspectRatio) {
-                newHeight = height
-                newWidth = (height * aspectRatio).toInt()
-            } else {
-                newWidth = width
-                newHeight = (width / aspectRatio).toInt()
-            }
-        }
-
-        // Calculate the starting points for cropping
-        val cropX = (width - newWidth) / 2
-        val cropY = (height - newHeight) / 2
-
-        // Calculate size of the cropped frame
-        val croppedSize = newWidth * newHeight * 3 / 2
-        val croppedData = ByteArray(croppedSize)
-
-        // Iterate over the height of the crop area
-        for (y in 0 until newHeight) {
-            // Crop Y plane
-            val srcYPos = (cropY + y) * width + cropX
-            val dstYPos = y * newWidth
-            System.arraycopy(data, srcYPos, croppedData, dstYPos, newWidth)
-
-            // Crop UV plane (only process every second row for UV)
-            if (y % 2 == 0) {
-                val srcUVPos = width * height + ((cropY / 2) + (y / 2)) * width + cropX
-                val dstUVPos = newWidth * newHeight + (y / 2) * newWidth
-                System.arraycopy(data, srcUVPos, croppedData, dstUVPos, newWidth)
-            }
-        }
-
-        return CroppedNV21(croppedData, newWidth, newHeight)
-    }
-
 
     private fun setFilter(haveFilter: Boolean = true) {
         mBinding.gpuImageView.setRenderMode(GPUImageView.RENDERMODE_WHEN_DIRTY)
@@ -1267,14 +1141,6 @@ open class UvcCameraFragment : Fragment() {
         )
     }
 
-
-    fun refreshGallery2(context: Context, filePath: String) {
-        MediaScannerConnection.scanFile(context, arrayOf(filePath), null) { path, uri ->
-            // MediaScannerConnection is complete
-            XLogger.d("拍照完成:${path}")
-        }
-    }
-
     @Composable
     fun ButtonView() {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1294,8 +1160,7 @@ open class UvcCameraFragment : Fragment() {
                     val bit = mBinding.gpuImageView.capture()
                     bitmap = bit
                     //把图片保存到相册
-                    saveImageToGallery1(bit,System.currentTimeMillis().toString())
-
+                    Utils.saveImageToGallery1(requireContext(),bit, albumName = "GemHubUVC")
                 }) {
                 Text("拍照")
             }
@@ -1309,38 +1174,6 @@ open class UvcCameraFragment : Fragment() {
                     contentScale = ContentScale.FillWidth
                 )
             }
-        }
-    }
-
-
-    private fun saveImageToGallery1(bitmap: Bitmap, albumName: String) {
-        val filename = "${System.currentTimeMillis()}.jpg"
-        val write = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            if (write) {
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + File.separator + albumName)
-            } else {
-                val imagesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + File.separator + albumName
-                val image = File(imagesDir, filename)
-                put(MediaStore.MediaColumns.DATA, image.absolutePath)
-            }
-        }
-
-        val uri = requireContext().contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-        try {
-            uri?.let {
-                requireContext().contentResolver.openOutputStream(it).use { outputStream ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream!!)
-                }
-            } ?: throw IOException("Failed to create new MediaStore record.")
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }finally {
-//            MediaScannerConnection.scanFile(context, arrayOf(file.toString()), null, null)
-            requireContext().sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri))
         }
     }
 
@@ -1429,102 +1262,6 @@ open class UvcCameraFragment : Fragment() {
             }) {
                 Text(if (isRecording) "$recordingTime 秒" else "开始录制")
             }
-        }
-    }
-
-    fun getVideoFrameRate(videoFilePath: String?) {
-        val extractor = MediaExtractor()
-        try {
-            // 设置数据源
-            extractor.setDataSource(videoFilePath!!)
-            val numTracks = extractor.trackCount
-            for (i in 0 until numTracks) {
-                val format = extractor.getTrackFormat(i)
-                val mime = format.getString(MediaFormat.KEY_MIME)
-                if (mime!!.startsWith("video/")) {
-                    // 获取帧率
-                    if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                        val frameRate = format.getInteger(MediaFormat.KEY_FRAME_RATE)
-                        XLogger.d("Frame Rate: $frameRate fps")
-                    } else {
-                        XLogger.d("Frame Rate information not available.")
-                    }
-                    break // 找到视频轨道后无需继续
-                }
-            }
-        } catch (e: java.lang.Exception) {
-            XLogger.d("Error extracting video info" + e.message)
-        } finally {
-            extractor.release()
-        }
-    }
-
-
-    fun saveImageToGallery(context: Context, bitmap: Bitmap, fileName: String): Uri? {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-        }
-
-        val uri: Uri? = context.contentResolver.insert(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        )
-        if (uri != null) {
-            var outputStream: OutputStream? = null
-            try {
-                outputStream = context.contentResolver.openOutputStream(uri)
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream!!)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                outputStream?.close()
-            }
-        }
-        return uri
-    }
-
-    fun saveVideoToGallery(context: Context, videoFile: File, fileName: String): Uri? {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES)
-        }
-
-        val uri: Uri? = context.contentResolver.insert(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            contentValues
-        )
-        if (uri != null) {
-            var outputStream: OutputStream? = null
-            var inputStream: FileInputStream? = null
-            try {
-                outputStream = context.contentResolver.openOutputStream(uri)
-                inputStream = FileInputStream(videoFile)
-
-                val buffer = ByteArray(1024)
-                var bytesRead: Int
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    outputStream?.write(buffer, 0, bytesRead)
-                }
-            } catch (e: Exception) {
-                XLogger.d("录制的视频 error:${e.message}")
-                e.printStackTrace()
-            } finally {
-                inputStream?.close()
-                outputStream?.close()
-            }
-        }
-        return uri
-    }
-
-    var lastPrintTime = System.currentTimeMillis()
-
-    fun logWithInterval(text: String) {
-        if ((System.currentTimeMillis() - lastPrintTime) > 3000) {
-            XLogger.d(text)
-            lastPrintTime = System.currentTimeMillis()
         }
     }
 }
