@@ -9,19 +9,12 @@ import android.view.ViewGroup
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -41,13 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.Fragment
-import com.camera.demo.Utils.calculateAverageColor
 import com.camera.demo.databinding.FragmentGrayWorldBinding
 import com.camera.utils.XLogger
-import com.serenegiant.usb.Size
-import com.serenegiant.usb.UVCCamera.UVC_VS_FRAME_MJPEG
+import jp.co.cyberagent.android.gpuimage.GPUImage
 import jp.co.cyberagent.android.gpuimage.GPUImageView
-import jp.co.cyberagent.android.gpuimage.filter.custom.GPUDynamicThresholdFilter
 import jp.co.cyberagent.android.gpuimage.filter.custom.GPUGrayWorldBalanceFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.custom.GPUImagePerfectReflectorBalanceFilter
@@ -56,8 +46,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class GrayWorldFragment : Fragment() {
-    lateinit var binding: FragmentGrayWorldBinding
 
+    private lateinit var binding: FragmentGrayWorldBinding
 
     private val mGPUPerfectReflectorBalanceFilter by lazy {
         GPUImagePerfectReflectorBalanceFilter()
@@ -76,18 +66,22 @@ class GrayWorldFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.composeView.setContent {
-
-            val imageList = mutableListOf<Int>()
-
-
+            val imageList = remember { mutableListOf<Int>() }
             val scope = rememberCoroutineScope()
-            val bitmap = remember { mutableStateOf<Bitmap?>(null) }
+            val currentBitmap = remember { mutableStateOf<Bitmap?>(null) }
+            var gpuImageView by remember { mutableStateOf<GPUImageView?>(null) }
+            LaunchedEffect(currentBitmap) {
+                currentBitmap.value?.let {
+                    gpuImageView?.gpuImage?.deleteImage()
+                    gpuImageView?.setImage(currentBitmap.value)
+                }
+            }
 
             LaunchedEffect(Unit) {
-                bitmap.value = BitmapFactory.decodeResource(resources, R.mipmap.image2)
+                currentBitmap.value = BitmapFactory.decodeResource(resources, R.mipmap.image3)
+                imageList.add(R.mipmap.image3)
                 imageList.add(R.mipmap.image1)
                 imageList.add(R.mipmap.image2)
-                imageList.add(R.mipmap.image3)
                 imageList.add(R.mipmap.image4)
                 imageList.add(R.mipmap.image6)
                 imageList.add(R.mipmap.image_l_1)
@@ -102,8 +96,7 @@ class GrayWorldFragment : Fragment() {
                     .fillMaxSize()
                     .background(color = Color.White)
             ) {
-                var gpuImageView by remember { mutableStateOf<GPUImageView?>(null) }
-                bitmap.value?.let {
+                currentBitmap.value?.let {
                     Image(
                         bitmap = it.asImageBitmap(),
                         modifier = Modifier
@@ -111,13 +104,14 @@ class GrayWorldFragment : Fragment() {
                             .aspectRatio(4 / 3f)
                             .border(width = 1.dp, color = Color.Black),
                         contentDescription = "",
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Crop
                     )
                 }
 
                 AndroidView(
                     factory = { context ->
                         GPUImageView(context).apply {
+                            this.gpuImage.setScaleType(GPUImage.ScaleType.CENTER_CROP)
                             gpuImageView = this
                         }
                     },
@@ -125,19 +119,23 @@ class GrayWorldFragment : Fragment() {
                         .fillMaxWidth()
                         .aspectRatio(4 / 3f)
                         .border(width = 1.dp, color = Color.Black),
-                    update = {
-                        bitmap.value?.let {
-                            gpuImageView?.setImage(bitmap.value)
+                    update = { view->
+                        gpuImageView = view
+                        currentBitmap.value?.let {
+                            view.gpuImage.deleteImage()
+                            view.setImage(currentBitmap.value)
                         }
                     },
                 )
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     TextButton(
                         onClick = {
-                            if (bitmap.value != null) {
+                            if (currentBitmap.value != null) {
                                 scope.launch(Dispatchers.IO) {
                                     gpuImageView?.filter = mGPUGrayWorldBalanceFilter
-                                    val array = calculateAverageColor(bitmap.value!!)
+                                    val array = calculateAverageColor(currentBitmap.value!!)
                                     XLogger.d("${array[0]} ${array[1]} ${array[2]}")
                                     mGPUGrayWorldBalanceFilter.setGrayWorldFactors(
                                         array[0],
@@ -157,10 +155,10 @@ class GrayWorldFragment : Fragment() {
 
                     TextButton(
                         onClick = {
-                            if (bitmap.value != null) {
+                            if (currentBitmap.value != null) {
                                 scope.launch(Dispatchers.IO) {
                                     gpuImageView?.filter = mGPUPerfectReflectorBalanceFilter
-                                    val array = calculateAverageColor(bitmap.value!!)
+                                    val array = calculateAverageColor(currentBitmap.value!!)
                                     XLogger.d("${array[0]} ${array[1]} ${array[2]}")
                                     mGPUPerfectReflectorBalanceFilter.setPerfectReflectorFactors(
                                         array[0],
@@ -170,7 +168,6 @@ class GrayWorldFragment : Fragment() {
                                     gpuImageView?.requestRender()
                                 }
                             }
-
                         }
                     ) {
                         Text(text = "完美反射算法", fontSize = 16.sp)
@@ -180,7 +177,7 @@ class GrayWorldFragment : Fragment() {
                         onClick = {
                             scope.launch(Dispatchers.IO) {
                                 gpuImageView?.filter = GPUImageFilter()
-                                gpuImageView?.setImage(bitmap.value)
+                                gpuImageView?.setImage(currentBitmap.value)
                             }
                         }
                     ) {
@@ -199,28 +196,30 @@ class GrayWorldFragment : Fragment() {
                         }
                     }
                     DropdownMenu(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxWidth(0.5f)
+                            .background(color = Color(0xFF009688))
+                        ,
                         expanded = show,
                         onDismissRequest = {
                             show = false
                         },
                     ) {
+                        XLogger.d("imageList:${imageList.size}")
                         imageList.forEach {
                             DropdownMenuItem(
-                                modifier = Modifier.fillMaxWidth()
-                                ,
+                                modifier = Modifier.fillMaxWidth(),
                                 text = {
                                     Image(
                                         painter = painterResource(it),
                                         contentDescription = null,
                                         modifier = Modifier
-                                            .fillMaxWidth(0.5f)
+                                            .fillMaxWidth()
                                             .aspectRatio(4 / 3f)
                                     )
                                 },
                                 onClick = {
                                     show = false
-                                    bitmap.value = BitmapFactory.decodeResource(resources, it)
+                                    currentBitmap.value = BitmapFactory.decodeResource(resources, it)
                                 },
                             )
                         }
