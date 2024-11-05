@@ -41,7 +41,7 @@
         android:requestLegacyExternalStorage="true"
         android:supportsRtl="true">
 
-        <activity android:name=".MainActivity"
+        <activity android:name=".SplashActivity"
             android:exported="true"
             android:launchMode="singleInstance"
             android:theme="@style/Theme.ClinkCameraDemo.NoActionBar" >
@@ -51,7 +51,10 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
 
+        <activity android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
             </intent-filter>
@@ -60,6 +63,7 @@
                 android:resource="@xml/default_device_filter"
                 />
         </activity>
+        <activity android:name=".MathActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
