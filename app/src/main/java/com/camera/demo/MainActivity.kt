@@ -28,6 +28,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.PermissionChecker
 import androidx.fragment.app.Fragment
 import com.camera.demo.databinding.ActivityMainBinding
+import com.camera.demo.uvc.GlSurfaceFragment
 import com.jiangdg.ausbc.utils.ToastUtils
 import com.jiangdg.ausbc.utils.Utils
 
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
-        replaceDemoFragment(UvcCameraFragment())
+        replaceDemoFragment(GlSurfaceFragment())
 //        replaceDemoFragment(DemoFragment())
         val uri = Uri.parse("package:${this.packageName}")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -104,8 +105,8 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
 //                replaceDemoFragment(DemoMultiCameraFragment())
-                replaceDemoFragment(UvcCameraFragment())
-//                replaceDemoFragment(GlSurfaceFragment())
+//                replaceDemoFragment(UvcCameraFragment())
+                replaceDemoFragment(GlSurfaceFragment())
             }
             REQUEST_STORAGE -> {
                 val hasCameraPermission =
